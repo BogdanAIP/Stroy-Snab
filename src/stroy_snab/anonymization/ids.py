@@ -22,7 +22,7 @@ def neutral_id(prefix: str, ordinal: int, *, width: int = 4) -> str:
     """
     normalized = prefix.strip().upper()
     if normalized not in _ALLOWED_PREFIXES:
-        raise ValueError(f"unsupported neutral-id prefix: {prefix!r}")
+        raise ValueError("unsupported neutral-id prefix")
     if ordinal < 1:
         raise ValueError("ordinal must be >= 1")
     if not 4 <= width <= 8:
@@ -33,5 +33,5 @@ def neutral_id(prefix: str, ordinal: int, *, width: int = 4) -> str:
 
 def validate_neutral_id(value: str) -> str:
     if not isinstance(value, str) or not _NEUTRAL_ID_RE.fullmatch(value):
-        raise ValueError(f"not a neutral public id: {value!r}")
+        raise ValueError("not a neutral public id")
     return value
