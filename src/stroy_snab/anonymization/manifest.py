@@ -46,7 +46,7 @@ def _walk_keys(value: Any) -> None:
         for key, nested in value.items():
             folded = str(key).casefold()
             if any(fragment in folded for fragment in _FORBIDDEN_KEY_FRAGMENTS):
-                raise ValueError(f"forbidden reverse/private field in public manifest: {key!r}")
+                raise ValueError("forbidden reverse/private field in public manifest")
             _walk_keys(nested)
     elif isinstance(value, list):
         for nested in value:
@@ -69,14 +69,14 @@ def _validate_derivative_path(value: str) -> None:
         or (filename.startswith("page-") and filename.endswith(".png") and filename[5:-4].isdigit())
     )
     if not allowed:
-        raise ValueError(f"non-neutral derivative filename: {filename!r}")
+        raise ValueError("non-neutral derivative filename")
 
 
 def validate_public_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     _walk_keys(manifest)
     unknown_top = set(manifest) - _ALLOWED_TOP_LEVEL
     if unknown_top:
-        raise ValueError(f"unknown public manifest fields: {sorted(unknown_top)}")
+        raise ValueError("unknown public manifest fields present")
     if manifest.get("schema_version") != "1.0":
         raise ValueError("schema_version must be '1.0'")
     validate_neutral_id(manifest.get("case_id", ""))
@@ -91,10 +91,10 @@ def validate_public_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
             raise ValueError("each document must be an object")
         unknown = set(doc) - _ALLOWED_DOCUMENT_KEYS
         if unknown:
-            raise ValueError(f"unknown public document fields: {sorted(unknown)}")
+            raise ValueError("unknown public document fields present")
         validate_neutral_id(doc.get("document_id", ""))
         if doc.get("role") not in _ALLOWED_ROLES:
-            raise ValueError(f"unsupported document role: {doc.get('role')!r}")
+            raise ValueError("unsupported document role")
         if doc.get("format") not in {"xlsx", "png", "json"}:
             raise ValueError("public derivative format must be xlsx/png/json in Stage 1P prototype")
         files = doc.get("derivative_files")
