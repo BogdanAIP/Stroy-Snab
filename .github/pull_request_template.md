@@ -23,8 +23,9 @@
 
 ## Data safety
 
-- [ ] No raw private procurement documents or secrets committed.
-- [ ] Fixtures are synthetic/redacted-derived/public-source and labelled.
+- [ ] No raw private procurement documents, raw archive members or secrets committed.
+- [ ] Every fixture is labelled `anonymized-real | synthetic | minimal-redacted | public-source`.
+- [ ] Any `anonymized-real` fixture passed the full Anonymization Gate from `docs/DATA_POLICY.md`, including hidden metadata/internal-file checks; visual masking alone is not accepted redaction.
 
 ## Tests / evals
 
@@ -38,7 +39,7 @@
 
 ## Evidence / acceptance
 
-<!-- CI, eval report, physical/integration evidence when applicable. -->
+<!-- CI, eval report, physical/integration/anonymization evidence when applicable. -->
 
 ## Independent review
 
