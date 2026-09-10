@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import json
 import re
+import warnings
 import zipfile
 import xml.etree.ElementTree as ET
 from typing import Iterable
@@ -101,9 +102,7 @@ def _scan_xlsx(path: Path, forbidden_tokens: Iterable[str]) -> LeakReport:
                     report.findings.append(
                         LeakFinding("forbidden_xlsx_part", location, "forbidden internal XLSX part")
                     )
-                report.findings.extend(
-                    scan_text(name, location=location, forbidden_tokens=forbidden_tokens)
-                )
+                report.findings.extend(scan_text(name, location=location, forbidden_tokens=forbidden_tokens))
                 if lower.endswith((".xml", ".rels")):
                     data = archive.read(name)
                     try:
@@ -155,24 +154,45 @@ def _scan_image(path: Path, forbidden_tokens: Iterable[str]) -> LeakReport:
     from PIL import Image
 
     report = LeakReport(requires_manual_visual_review=True)
-    with Image.open(path) as image:
-        # Public visual derivatives should carry no descriptive source metadata.
-        exif = image.getexif()
-        if exif and len(exif):
-            report.findings.append(LeakFinding("image_exif_present", "image-metadata", "EXIF metadata present"))
-            for value in exif.values():
-                if isinstance(value, str):
-                    report.findings.extend(
-                        scan_text(value, location="image-metadata", forbidden_tokens=forbidden_tokens)
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(path) as image:
+                if getattr(image, "n_frames", 1) != 1:
+                    report.findings.append(
+                        LeakFinding("image_multiframe", "image-container", "visual derivative must contain one frame")
                     )
-        for value in image.info.values():
-            if isinstance(value, str) and value.strip():
-                report.findings.append(
-                    LeakFinding("image_text_metadata_present", "image-metadata", "textual image metadata present")
-                )
-                report.findings.extend(
-                    scan_text(value, location="image-metadata", forbidden_tokens=forbidden_tokens)
-                )
+                exif = image.getexif()
+                if exif and len(exif):
+                    report.findings.append(
+                        LeakFinding("image_exif_present", "image-metadata", "EXIF metadata present")
+                    )
+                    for value in exif.values():
+                        if isinstance(value, str):
+                            report.findings.extend(
+                                scan_text(value, location="image-metadata", forbidden_tokens=forbidden_tokens)
+                            )
+                # Stage 1P visual derivatives are intended to be pixel-only.
+                # Any auxiliary image info (including ICC/XMP/text chunks) is blocking.
+                for value in image.info.values():
+                    if value not in (None, "", b""):
+                        report.findings.append(
+                            LeakFinding("image_metadata_present", "image-metadata", "auxiliary image metadata present")
+                        )
+                        if isinstance(value, str):
+                            report.findings.extend(
+                                scan_text(value, location="image-metadata", forbidden_tokens=forbidden_tokens)
+                            )
+                        elif isinstance(value, bytes):
+                            decoded = value.decode("utf-8", errors="ignore")
+                            if decoded:
+                                report.findings.extend(
+                                    scan_text(decoded, location="image-metadata", forbidden_tokens=forbidden_tokens)
+                                )
+    except (Image.DecompressionBombWarning, Image.DecompressionBombError):
+        report.findings.append(
+            LeakFinding("image_resource_limit", "image-container", "image exceeds safe decode limits")
+        )
     return report
 
 
