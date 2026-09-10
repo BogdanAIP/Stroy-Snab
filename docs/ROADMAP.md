@@ -10,23 +10,37 @@ Roadmap построен как последовательность измер�
 
 Gate: свежий независимый review foundation PR.
 
-## Stage 1 — Document Intake Benchmark
+## Stage 1 — Document Intake & Lifecycle Benchmark
 
-Цель: научиться воспроизводимо извлекать закупочные строки из **обезличенных производных реальных УПД, счетов и спецификаций**, сохраняя реальные сложности layout и товарной номенклатуры без раскрытия названий и реквизитов компаний.
+Цель: научиться воспроизводимо извлекать и связывать закупочные данные из **обезличенных производных реальных заявок, счетов, УПД, спецификаций и входного контроля материалов**, сохраняя реальные сложности layout и товарной номенклатуры без раскрытия названий и реквизитов компаний.
 
-Перед benchmark определить и проверить Anonymization Gate. Сырые Library-документы остаются вне GitHub; в репозиторий поступает `anonymized-real` corpus.
+Перед benchmark определить и проверить Anonymization Gate. Сырые Library/ZIP-документы остаются вне GitHub; в репозиторий поступает `anonymized-real` corpus.
 
-Исследовать готовые PDF/document extraction решения до собственного parser.
+### Stage 1A — Document extraction
+
+Исследовать готовые PDF/image/spreadsheet/document extraction решения до собственного parser.
 
 Минимальная каноническая строка:
 
-`document_id, item_name_raw, unit_raw, quantity, source_locator`.
+`document_id, document_role, item_name_raw, unit_raw, quantity, source_locator`.
 
-Опционально сохраняются безопасная дата, псевдоним роли стороны (`SUPPLIER_A`) и технические токены. Реальное имя поставщика и исходный номер документа публичному benchmark не требуются.
+Опционально сохраняются безопасная дата, псевдоним роли стороны (`SUPPLIER_A`), технические токены и другие поля, прошедшие data policy. Реальное имя поставщика и исходный номер документа публичному benchmark не требуются.
+
+### Stage 1B — Procurement lifecycle linkage
+
+Построить gold-набор реальных связей между документами и строками без предположения 1:1.
+
+Минимальные роли источников:
+
+`REQUEST | SPECIFICATION | OFFER_OR_INVOICE | UPD_OR_DELIVERY | INCOMING_CONTROL`.
+
+Должны поддерживаться one-to-one, one-to-many, many-to-one и many-to-many связи, включая частичную поставку, дозаказ, разбивку между документами, объединение строк, сверхпоставку и отсутствие доказанной связи.
+
+На Stage 1 linkage опирается прежде всего на явные ссылки/метаданные и human gold. Семантическая похожесть может предложить candidate edge, но не доказывает техническую эквивалентность.
 
 Расширение после измерения корпуса: артикул, цена, НДС, сумма, ГОСТ/ТУ/DIN tokens и другие поля, только если они нужны конкретной оценке и проходят data policy.
 
-Gate: проверенный anonymized-real dataset + gold labels + benchmark + error taxonomy + отсутствие известных anonymization leaks + выбранный минимальный extraction stack.
+Gate: проверенный anonymized-real dataset + extraction gold + lifecycle-link gold + benchmark + error taxonomy + отсутствие известных anonymization leaks + выбранный минимальный extraction/linkage stack.
 
 ## Stage 2 — Canonical Item & Normalization
 
@@ -36,13 +50,15 @@ Gate: проверенный anonymized-real dataset + gold labels + benchmark +
 
 Gate: attribute-level precision/recall на anonymized-real corpus и adversarial regression set.
 
-## Stage 3 — Matching & Compatibility
+## Stage 3 — Matching, Compatibility & Fulfilment
 
-Цель: разделить `EXACT | EQUIVALENT | CANDIDATE | REJECT | UNKNOWN`.
+Цель: разделить `EXACT | EQUIVALENT | CANDIDATE | REJECT | UNKNOWN` и применить это к реальным request-to-procurement/delivery связям.
 
 Сначала deterministic/hybrid matching; LLM — bounded evidence consumer, не единственный арбитр эквивалентности.
 
-Gate: отдельно измеренные exact-match precision/recall и false-equivalent rate. False-equivalent — критическая метрика.
+Отдельно измеряется fulfilment: какая доля заявленного количества подтверждённо закуплена/поставлена, где есть partial/split/merge/extra/unfulfilled, и где связь остаётся неизвестной.
+
+Gate: отдельно измеренные exact-match precision/recall, lifecycle/line-link precision/recall, quantity fulfilment accuracy и false-equivalent rate. False-equivalent — критическая метрика.
 
 ## Stage 4 — Supplier & Offer Discovery
 
@@ -58,7 +74,7 @@ Gate: supplier/offer evidence completeness + precision + stale-data handling.
 
 Кандидаты первого сравнения: ERPNext/Frappe и OpenConstructionERP. При необходимости оценить Odoo/OCA.
 
-Gate: реальный сценарий request -> RFQ/quotation -> decision -> PO-like record, API/agent ergonomics, auditability, deployment cost и schema fit.
+Gate: реальный сценарий request -> RFQ/quotation -> decision -> PO-like record -> delivery/incoming-control linkage, API/agent ergonomics, auditability, deployment cost и schema fit.
 
 ## Stage 6 — CAP Read-only Composition
 
@@ -78,7 +94,7 @@ Gate: fault injection + no-blind-retry + explicit human authority policy.
 
 Цель: ограниченный реальный пилот на строительных закупках.
 
-Метрики: время на обработку, доля ручных исправлений, extraction/matching errors, false-equivalent, экономия/качество shortlist, action failures, evidence completeness.
+Метрики: время на обработку, доля ручных исправлений, extraction/linkage/matching errors, false-equivalent, fulfilment accuracy, экономия/качество shortlist, action failures, evidence completeness.
 
 ## Отложено до доказанной необходимости
 
