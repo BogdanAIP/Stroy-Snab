@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets / local configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Private procurement corpus — NEVER commit raw customer documents
+private-data/
+private_data/
+local-corpus/
+local_corpus/
+raw-documents/
+raw_documents/
+evals/private/
+data/private/
+*.private.json
+*.private.jsonl
+
+# Local experiment outputs
+artifacts/
+outputs/
+.tmp/
+tmp/
+
+# Keep public/redacted fixtures only under tracked data/evals paths
