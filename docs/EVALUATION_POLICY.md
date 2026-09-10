@@ -6,7 +6,7 @@ Stroy-Snab развивается через измеримые evals, а не �
 
 ### E1 — Document extraction
 
-Метрики по полям: exact/normalized accuracy для даты, номера, поставщика, наименования, единицы, количества; line detection precision/recall; document-level perfect extraction rate.
+Метрики по полям: exact/normalized accuracy для безопасного document id/date, наименования, единицы, количества и технических токенов; line detection precision/recall; document-level perfect extraction rate. Supplier/buyer role оценивается через псевдонимы, когда это нужно для структуры документа; реальная identity компании не является публичной eval-целью.
 
 ### E2 — Normalization
 
@@ -26,7 +26,7 @@ Stroy-Snab развивается через измеримые evals, а не �
 
 ### E4 — Supplier/offer evidence
 
-Измеряются correctness и source coverage для supplier identity, item identity, price basis, VAT, availability, delivery terms/date и freshness.
+Измеряются correctness и source coverage для supplier identity, item identity, price basis, VAT, availability, delivery terms/date и freshness. Публичные fixture-документы при этом используют псевдонимы компаний; реальные контрагенты могут появляться только как live/public supplier evidence на соответствующем этапе, а не как раскрытые реквизиты из исторических УПД.
 
 ### E5 — Procurement recommendation
 
@@ -38,10 +38,13 @@ Stroy-Snab развивается через измеримые evals, а не �
 
 ## Dataset separation
 
-- `public regression`: обезличенные/синтетические fixtures в репозитории;
-- `private realistic`: реальные документы из Library/локального корпуса;
-- `holdout`: случаи, не использованные для настройки правил/промптов;
+- `anonymized-real regression`: обезличенные производные реальных документов в репозитории после Anonymization Gate;
+- `synthetic/minimal regression`: синтетические и минимально обезличенные fixtures;
+- `raw private source`: исходные документы вне GitHub, используемые для подготовки обезличенных cases и закрытой контрольной проверки;
+- `holdout`: обезличенные случаи, не использованные для настройки правил/промптов;
 - `adversarial`: похожие товары с критическим несовпадением параметров.
+
+Основной воспроизводимый benchmark должен постепенно опираться на `anonymized-real regression`, чтобы CI и независимое ревью могли видеть реальные сложности документов без раскрытия реквизитов компаний.
 
 ## Baseline first
 
@@ -51,7 +54,9 @@ Stroy-Snab развивается через измеримые evals, а не �
 
 Каждый значимый провал получает класс, например:
 
-`DOC_LAYOUT | LINE_SPLIT | OCR_TEXT | UNIT | NUMBER | CATEGORY | ATTRIBUTE | STANDARD | MATCH_FALSE_POSITIVE | MATCH_FALSE_NEGATIVE | FALSE_EQUIVALENT | STALE_OFFER | SUPPLIER_IDENTITY | ACTION_AMBIGUITY | OTHER`
+`DOC_LAYOUT | LINE_SPLIT | OCR_TEXT | UNIT | NUMBER | CATEGORY | ATTRIBUTE | STANDARD | MATCH_FALSE_POSITIVE | MATCH_FALSE_NEGATIVE | FALSE_EQUIVALENT | STALE_OFFER | SUPPLIER_IDENTITY | ACTION_AMBIGUITY | ANONYMIZATION_LEAK | OTHER`
+
+`ANONYMIZATION_LEAK` — критическая ошибка data handling: реальный идентификатор/реквизит компании остался в public fixture или производном артефакте.
 
 Новые классы добавляются только если существующие не описывают причину.
 
@@ -60,7 +65,8 @@ Stroy-Snab развивается через измеримые evals, а не �
 Экспериментальный pipeline не становится default, пока:
 
 1. зафиксированы version/config/model/data identities;
-2. есть результаты public regression и private realistic set;
+2. есть результаты anonymized-real regression и требуемых дополнительных sets;
 3. нет необъяснённой регрессии критических метрик;
 4. известны failure modes;
-5. обновлён `EVIDENCE_INDEX.md` при принятии.
+5. нет известных `ANONYMIZATION_LEAK` в публикуемом корпусе;
+6. обновлён `EVIDENCE_INDEX.md` при принятии.
