@@ -12,9 +12,28 @@ Gate: свежий независимый review foundation PR.
 
 ## Stage 1 — Document Intake & Lifecycle Benchmark
 
-Цель: научиться воспроизводимо извлекать и связывать закупочные данные из **обезличенных производных реальных заявок, счетов, УПД, спецификаций и входного контроля материалов**, сохраняя реальные сложности layout и товарной номенклатуры без раскрытия названий и реквизитов компаний.
+Цель: научиться воспроизводимо подготавливать, извлекать и связывать закупочные данные из **обезличенных производных реальных заявок, счетов, УПД, спецификаций и входного контроля материалов**, сохраняя реальные сложности layout и товарной номенклатуры без раскрытия названий и реквизитов компаний.
 
-Перед benchmark определить и проверить Anonymization Gate. Сырые Library/ZIP-документы остаются вне GitHub; в репозиторий поступает `anonymized-real` corpus.
+Сырые Library/ZIP/Drive-документы остаются вне GitHub; в репозиторий поступает только `anonymized-real` corpus после полного Anonymization Gate.
+
+### Stage 1P — Anonymization pipeline
+
+До OCR/extraction построить воспроизводимый format-aware pipeline подготовки публичных производных данных.
+
+Минимальные требования:
+
+- инвентаризация raw corpus без публикации исходных имён/реквизитов;
+- стабильные нейтральные case/document ids;
+- удаление/замена видимой identity и traceable identifiers;
+- очистка metadata, hidden spreadsheet content, comments/formulas/links, revision data, embedded objects и PDF OCR/text layers/attachments согласно `docs/DATA_POLICY.md`;
+- запрет overlay-only redaction;
+- отдельный leak-check после преобразования;
+- ручная выборочная проверка первых партий и каждого нового формата/шаблона;
+- provenance manifest, не содержащий обратимого соответствия публичных ids исходным документам.
+
+Предпочитать заново собранные sanitized derivatives исходным Office/PDF контейнерам, если нельзя уверенно доказать очистку всех внутренних частей.
+
+Gate 1P: первая репозиторная партия `anonymized-real` проходит автоматический/format-aware leak-check + ручную выборочную проверку без известных `ANONYMIZATION_LEAK`.
 
 ### Stage 1A — Document extraction
 
@@ -40,7 +59,7 @@ Gate: свежий независимый review foundation PR.
 
 Расширение после измерения корпуса: артикул, цена, НДС, сумма, ГОСТ/ТУ/DIN tokens и другие поля, только если они нужны конкретной оценке и проходят data policy.
 
-Gate: проверенный anonymized-real dataset + extraction gold + lifecycle-link gold + benchmark + error taxonomy + отсутствие известных anonymization leaks + выбранный минимальный extraction/linkage stack.
+Gate Stage 1: принятый anonymization pipeline + проверенный anonymized-real dataset + extraction gold + lifecycle-link gold + benchmark + error taxonomy + выбранный минимальный extraction/linkage stack.
 
 ## Stage 2 — Canonical Item & Normalization
 
