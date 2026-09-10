@@ -14,7 +14,7 @@ The current work establishes governance, architecture, data safety, reuse-first 
 
 ## Real-data direction
 
-The available source corpus already includes real:
+The available private source corpus already includes real:
 
 - procurement requests and follow-up orders;
 - invoices and scanned commercial documents;
@@ -22,7 +22,7 @@ The available source corpus already includes real:
 - specifications and consolidated supply tables;
 - incoming-control/material-accounting records.
 
-Raw source documents never enter the public repository. Repository datasets use `anonymized-real` derivatives after the mandatory Anonymization Gate: company identities, requisites and traceable document identifiers are removed/replaced while useful product names, technical tokens, units, quantities and document layout are preserved when safe.
+Raw source files and archives never enter the public repository. Repository datasets use `anonymized-real` derivatives after the mandatory Anonymization Gate: company identities, requisites, project-identifying information and traceable document identifiers are removed/replaced while useful product names, technical tokens, units, quantities and document layout are preserved when safe.
 
 The procurement process is modelled as a many-to-many evidence graph, not as `one request line = one invoice line = one delivery line`.
 
