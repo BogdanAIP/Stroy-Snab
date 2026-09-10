@@ -22,8 +22,13 @@ class LeakReport:
     requires_manual_visual_review: bool = False
 
     @property
-    def passed(self) -> bool:
+    def automated_checks_passed(self) -> bool:
         return not self.findings
+
+    @property
+    def passed(self) -> bool:
+        """Fail closed: visual derivatives are not publishable before manual review."""
+        return not self.findings and not self.requires_manual_visual_review
 
 
 # Deliberately conservative for public fixtures. False positives should force
@@ -64,14 +69,12 @@ def scan_text(
         if kind == "url" and not include_url:
             continue
         if pattern.search(text):
-            # Finding reports are safe to publish: never echo the matched private value.
             findings.append(LeakFinding(kind, location, f"matched {kind} pattern"))
 
     folded = text.casefold()
     for token in forbidden_tokens:
         normalized = token.strip()
         if normalized and normalized.casefold() in folded:
-            # Do not echo the full private token into public-facing reports.
             findings.append(LeakFinding("forbidden_token", location, "matched local denylist token"))
     return findings
 
@@ -79,11 +82,11 @@ def scan_text(
 def _scan_json(path: Path, forbidden_tokens: Iterable[str]) -> LeakReport:
     report = LeakReport()
     raw = path.read_text(encoding="utf-8")
-    report.findings.extend(scan_text(raw, location=path.name, forbidden_tokens=forbidden_tokens))
+    report.findings.extend(scan_text(raw, location="json-content", forbidden_tokens=forbidden_tokens))
     try:
         json.loads(raw)
     except json.JSONDecodeError as exc:
-        report.findings.append(LeakFinding("invalid_json", path.name, str(exc)))
+        report.findings.append(LeakFinding("invalid_json", "json-structure", f"parse error at line {exc.lineno}"))
     return report
 
 
@@ -91,36 +94,43 @@ def _scan_xlsx(path: Path, forbidden_tokens: Iterable[str]) -> LeakReport:
     report = LeakReport()
     try:
         with zipfile.ZipFile(path) as archive:
-            names = archive.namelist()
-            for name in names:
+            for index, name in enumerate(archive.namelist(), start=1):
                 lower = name.lower()
+                location = f"xlsx-member-{index}"
                 if any(marker in lower for marker in _XLSX_FORBIDDEN_MEMBER_MARKERS):
-                    report.findings.append(LeakFinding("forbidden_xlsx_part", name, "forbidden internal XLSX part"))
-                report.findings.extend(scan_text(name, location=f"member:{name}", forbidden_tokens=forbidden_tokens))
+                    report.findings.append(
+                        LeakFinding("forbidden_xlsx_part", location, "forbidden internal XLSX part")
+                    )
+                report.findings.extend(
+                    scan_text(name, location=location, forbidden_tokens=forbidden_tokens)
+                )
                 if lower.endswith((".xml", ".rels")):
                     data = archive.read(name)
                     try:
                         root = ET.fromstring(data)
                     except ET.ParseError:
-                        report.findings.append(LeakFinding("invalid_xlsx_xml", name, "unparseable XML part"))
+                        report.findings.append(LeakFinding("invalid_xlsx_xml", location, "unparseable XML part"))
                         continue
                     for elem in root.iter():
                         if elem.text:
                             report.findings.extend(
-                                scan_text(elem.text, location=f"member:{name}", forbidden_tokens=forbidden_tokens)
+                                scan_text(elem.text, location=location, forbidden_tokens=forbidden_tokens)
                             )
                         if elem.tail:
                             report.findings.extend(
-                                scan_text(elem.tail, location=f"member:{name}", forbidden_tokens=forbidden_tokens)
+                                scan_text(elem.tail, location=location, forbidden_tokens=forbidden_tokens)
                             )
                         attrs = {k.rsplit("}", 1)[-1]: str(v) for k, v in elem.attrib.items()}
                         if attrs.get("TargetMode", "").casefold() == "external":
                             report.findings.append(
-                                LeakFinding("external_relationship", name, "external relationship present")
+                                LeakFinding("external_relationship", location, "external relationship present")
                             )
-                            target = attrs.get("Target", "")
                             report.findings.extend(
-                                scan_text(target, location=f"external-target:{name}", forbidden_tokens=forbidden_tokens)
+                                scan_text(
+                                    attrs.get("Target", ""),
+                                    location=location,
+                                    forbidden_tokens=forbidden_tokens,
+                                )
                             )
                         for attr_name, attr_value in attrs.items():
                             if attr_name in {"Type", "Target", "TargetMode"}:
@@ -128,43 +138,59 @@ def _scan_xlsx(path: Path, forbidden_tokens: Iterable[str]) -> LeakReport:
                             report.findings.extend(
                                 scan_text(
                                     attr_value,
-                                    location=f"member:{name}@{attr_name}",
+                                    location=location,
                                     forbidden_tokens=forbidden_tokens,
                                     include_url=False,
                                 )
                             )
                 elif lower.endswith(".txt"):
                     text = archive.read(name).decode("utf-8", errors="ignore")
-                    report.findings.extend(scan_text(text, location=f"member:{name}", forbidden_tokens=forbidden_tokens))
+                    report.findings.extend(scan_text(text, location=location, forbidden_tokens=forbidden_tokens))
     except zipfile.BadZipFile:
-        report.findings.append(LeakFinding("invalid_xlsx", path.name, "not a valid XLSX/ZIP container"))
+        report.findings.append(LeakFinding("invalid_xlsx", "xlsx-container", "not a valid XLSX/ZIP container"))
     return report
 
 
-def scan_path(path: str | Path, *, forbidden_tokens: Iterable[str] = ()) -> LeakReport:
+def _scan_image(path: Path, forbidden_tokens: Iterable[str]) -> LeakReport:
+    from PIL import Image
+
+    report = LeakReport(requires_manual_visual_review=True)
+    with Image.open(path) as image:
+        # Public visual derivatives should carry no descriptive source metadata.
+        exif = image.getexif()
+        if exif and len(exif):
+            report.findings.append(LeakFinding("image_exif_present", "image-metadata", "EXIF metadata present"))
+            for value in exif.values():
+                if isinstance(value, str):
+                    report.findings.extend(
+                        scan_text(value, location="image-metadata", forbidden_tokens=forbidden_tokens)
+                    )
+        for value in image.info.values():
+            if isinstance(value, str) and value.strip():
+                report.findings.append(
+                    LeakFinding("image_text_metadata_present", "image-metadata", "textual image metadata present")
+                )
+                report.findings.extend(
+                    scan_text(value, location="image-metadata", forbidden_tokens=forbidden_tokens)
+                )
+    return report
+
+
+def scan_path(path: str | Path, *, forbidden_tokens: Iterable[str]) -> LeakReport:
     p = Path(path)
-    findings = scan_text(p.name, location="filename", forbidden_tokens=forbidden_tokens)
+    filename_findings = scan_text(p.name, location="filename", forbidden_tokens=forbidden_tokens)
     suffix = p.suffix.lower()
     if suffix == ".json":
         report = _scan_json(p, forbidden_tokens)
     elif suffix == ".xlsx":
         report = _scan_xlsx(p, forbidden_tokens)
     elif suffix in {".png", ".jpg", ".jpeg"}:
-        # Automated byte/container checks cannot prove that identifying text is
-        # absent from rendered pixels. Stage 1P therefore requires a separate
-        # manual visual review (later an OCR/VLM challenger may assist it).
-        report = LeakReport(requires_manual_visual_review=True)
-        if suffix == ".png":
-            from PIL import Image
-            with Image.open(p) as image:
-                for key, value in image.info.items():
-                    if isinstance(value, str):
-                        report.findings.extend(
-                            scan_text(value, location=f"png-metadata:{key}", forbidden_tokens=forbidden_tokens)
-                        )
+        report = _scan_image(p, forbidden_tokens)
     else:
         report = LeakReport()
-        report.findings.append(LeakFinding("unsupported_format", p.name, f"unsupported public derivative format: {suffix}"))
+        report.findings.append(
+            LeakFinding("unsupported_format", "file", f"unsupported public derivative format: {suffix}")
+        )
 
-    report.findings[:0] = findings
+    report.findings[:0] = filename_findings
     return report
