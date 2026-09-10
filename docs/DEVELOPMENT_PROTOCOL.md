@@ -40,13 +40,15 @@ Production path открывается только после `PROCEED` или 
 ## 7. Tests/evals
 
 Для deterministic logic — unit/property/regression tests.
-Для document/ML/LLM components — public regression + private realistic eval.
+Для document/ML/LLM components — repository `anonymized-real` regression + synthetic/adversarial cases + при необходимости отдельный raw-private control eval.
+Для lifecycle linkage — document/line-link precision/recall, split/merge/partial cases и quantity-flow consistency.
+Для anonymization — format-aware leak checks плюс ручная выборочная проверка новых типов/шаблонов; визуальная маска не считается достаточной защитой.
 Для external integrations — contract/integration tests.
 Для consequence-bearing CAP actions — ExpectedEffect/reconciliation/fault tests по применимой CAP policy.
 
 ## 8. Review
 
-Material PR проходит exact-head независимый semantic review. Review проверяет не только bugs, но и scope, evidence, data leakage, dependency justification, acceptance integrity и false-equivalent risk.
+Material PR проходит exact-head независимый semantic review. Review проверяет не только bugs, но и scope, evidence, visible/hidden data leakage, dependency justification, acceptance integrity, lifecycle-link errors и false-equivalent risk.
 
 ## 9. Durable continuation
 
