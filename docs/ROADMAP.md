@@ -12,17 +12,21 @@ Gate: свежий независимый review foundation PR.
 
 ## Stage 1 — Document Intake Benchmark
 
-Цель: научиться воспроизводимо извлекать закупочные строки из реальных УПД, счетов и спецификаций.
+Цель: научиться воспроизводимо извлекать закупочные строки из **обезличенных производных реальных УПД, счетов и спецификаций**, сохраняя реальные сложности layout и товарной номенклатуры без раскрытия названий и реквизитов компаний.
+
+Перед benchmark определить и проверить Anonymization Gate. Сырые Library-документы остаются вне GitHub; в репозиторий поступает `anonymized-real` corpus.
 
 Исследовать готовые PDF/document extraction решения до собственного parser.
 
 Минимальная каноническая строка:
 
-`document_date, document_number, supplier, item_name_raw, unit_raw, quantity, source_locator`.
+`document_id, item_name_raw, unit_raw, quantity, source_locator`.
 
-Расширение после измерения корпуса: артикул, цена, НДС, сумма, ГОСТ/ТУ/DIN tokens и другие поля.
+Опционально сохраняются безопасная дата, псевдоним роли стороны (`SUPPLIER_A`) и технические токены. Реальное имя поставщика и исходный номер документа публичному benchmark не требуются.
 
-Gate: gold dataset + benchmark + error taxonomy + выбранный минимальный extraction stack.
+Расширение после измерения корпуса: артикул, цена, НДС, сумма, ГОСТ/ТУ/DIN tokens и другие поля, только если они нужны конкретной оценке и проходят data policy.
+
+Gate: проверенный anonymized-real dataset + gold labels + benchmark + error taxonomy + отсутствие известных anonymization leaks + выбранный минимальный extraction stack.
 
 ## Stage 2 — Canonical Item & Normalization
 
@@ -30,7 +34,7 @@ Gate: gold dataset + benchmark + error taxonomy + выбранный миним�
 
 Кандидаты: ETIM/open dictionaries, Pint, RapidFuzz, multilingual embeddings; российские строительные источники — только после проверки лицензий.
 
-Gate: attribute-level precision/recall на реальном закрытом corpus и обезличенном regression set.
+Gate: attribute-level precision/recall на anonymized-real corpus и adversarial regression set.
 
 ## Stage 3 — Matching & Compatibility
 
