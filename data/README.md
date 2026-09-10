@@ -7,12 +7,21 @@
 ```text
 data/
   fixtures/
-    documents/        # synthetic/redacted-derived inputs
-    expected/         # public gold outputs
-  dictionaries/       # только данные с проверенной лицензией
-  manifests/          # безопасные version/provenance manifests
+    documents/
+      anonymized-real/   # обезличенные производные реальных УПД/счетов/спецификаций
+      synthetic/         # полностью синтетические документы
+      minimal-redacted/  # минимальные regression fragments
+    expected/            # public gold outputs без реальных реквизитов
+  dictionaries/          # только данные с проверенной лицензией
+  manifests/             # безопасные version/provenance manifests
 ```
 
 Сырые реальные УПД/счета/КП из ChatGPT Library или локального корпуса сюда не копируются.
 
-Private cases получают непрозрачные ids (`priv_upd_0001` и т.п.). Публичные regression cases должны минимально воспроизводить layout/parser/matching failure без раскрытия исходного документа.
+Реальные документы могут присутствовать только как `anonymized-real` после Anonymization Gate из `docs/DATA_POLICY.md`. В такой копии не должно оставаться названий компаний, ИНН/КПП/ОГРН, адресов, банковских и контактных реквизитов, ФИО/подписей/печатей, идентифицирующих QR/штрихкодов и связующих номеров документов.
+
+Идентичности сторон заменяются нейтральными псевдонимами вроде `SUPPLIER_A` / `BUYER_A`. Обратная таблица соответствий в репозитории не хранится.
+
+Товарные наименования, технические обозначения, единицы, количества и layout желательно сохранять максимально близко к исходным, потому что именно они нужны для реалистичного benchmark. Цены/НДС/суммы разрешены только когда нужны конкретной оценке и не создают существенного риска повторной идентификации.
+
+Каждый fixture получает provenance label: `anonymized-real | synthetic | minimal-redacted | public-source`.
