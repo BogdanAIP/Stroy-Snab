@@ -9,6 +9,8 @@ import zipfile
 import xml.etree.ElementTree as ET
 from typing import Iterable
 
+from .identifiers import iter_unlabeled_tax_identifiers
+
 
 @dataclass(frozen=True)
 class LeakFinding:
@@ -71,6 +73,9 @@ def scan_text(
             continue
         if pattern.search(text):
             findings.append(LeakFinding(kind, location, f"matched {kind} pattern"))
+
+    for kind in iter_unlabeled_tax_identifiers(text):
+        findings.append(LeakFinding(kind, location, "matched checksum-valid unlabeled tax identifier"))
 
     folded = text.casefold()
     for token in forbidden_tokens:
