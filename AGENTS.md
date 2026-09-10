@@ -85,4 +85,22 @@ Anonymization Gate относится ко всему файлу: metadata, ск
 5. отсутствие unresolved confirmed findings;
 6. повторный review после любого material fix, двигающего HEAD.
 
-Политика из HEAD не может сама ослабить правила принятия PR, который её вводит. Для Stage 0 действует одноразовое bootstrap-исключение: BASE содержит только исходный README, а предложенная governance оценивается как target semantics и не самосертифицируется.
+Политика из HEAD не может сама ослабить правила принятия PR, который её вводит.
+
+### One-time Stage 0 bootstrap exception
+
+PR #1 — единственное bootstrap-исключение. Его immutable BASE должен быть ровно:
+
+`2397b487a3e7b4a0c8b7599f69c72e600ee9f6c2`
+
+Этот BASE содержит только исходный bootstrap README и не содержит принятой repository-development/review policy. Для PR #1:
+
+- `review_policy_ref` остаётся привязан к этому exact BASE SHA;
+- BASE bootstrap intent требует независимой проверки foundation до production implementation;
+- предложенные `AGENTS.md` и `.agents/skills/code-review/SKILL.md` из HEAD рассматриваются только как **target semantics/checklist**, а не как уже принятая власть, способная самосертифицировать PR;
+- свежий read-only reviewer обязан независимо проверить live PR identity, полный `BASE..HEAD` diff, data-safety/anonymization границы, governance consistency, roadmap/reuse decisions и отсутствие преждевременной production authority;
+- terminal result должен быть привязан к exact `repository, PR, BASE_SHA, HEAD_SHA, review_policy_ref`;
+- любое material изменение HEAD после результата делает review stale и требует повторения;
+- после merge PR #1 это исключение больше никогда не применяется: дальнейшие PR управляются только принятой политикой из их BASE.
+
+Если live PR #1 base отличается от указанного SHA или bootstrap authority нельзя однозначно восстановить, принятие fail-closed.
