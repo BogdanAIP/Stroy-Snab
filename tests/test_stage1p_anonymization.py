@@ -59,6 +59,7 @@ def test_scan_text_detects_generic_identifiers_without_echoing_local_denylist():
     deny = scan_text("Order for Secret Supplier LLC", forbidden_tokens=["Secret Supplier LLC"])
     assert deny[0].kind == "forbidden_token"
     assert deny[0].evidence == "matched local denylist token"
+    assert "Secret Supplier LLC" not in str(deny[0])
 
 
 def test_rebuilt_xlsx_rejects_url_like_content(tmp_path: Path):
@@ -90,7 +91,7 @@ def test_rebuilt_xlsx_is_clean_and_formula_string_is_inert(tmp_path: Path):
         ],
         forbidden_tokens=[],
     )
-    report = scan_path(output)
+    report = scan_path(output, forbidden_tokens=[])
     assert report.passed, report.findings
     with zipfile.ZipFile(output) as archive:
         names = {n.lower() for n in archive.namelist()}
@@ -122,7 +123,7 @@ def test_xlsx_leakcheck_detects_hidden_container_part(tmp_path: Path):
         for item in src.infolist():
             dst.writestr(item, src.read(item.filename))
         dst.writestr("xl/externalLinks/externalLink1.xml", "<secret>hidden</secret>")
-    report = scan_path(poisoned)
+    report = scan_path(poisoned, forbidden_tokens=[])
     assert any(f.kind == "forbidden_xlsx_part" for f in report.findings)
 
 
@@ -142,7 +143,7 @@ def test_json_leakcheck_and_manifest_file(tmp_path: Path):
         ],
     )
     path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
-    assert scan_path(path).passed
+    assert scan_path(path, forbidden_tokens=[]).passed
 
 
 def test_failed_rebuild_leaves_no_candidate_file(tmp_path: Path):
@@ -171,3 +172,20 @@ def test_manifest_rejects_non_neutral_derivative_filename():
                 }
             ],
         )
+
+
+def test_clean_png_requires_manual_visual_review(tmp_path: Path):
+    from PIL import Image
+
+    output = tmp_path / "page-001.png"
+    Image.new("RGB", (20, 20), "white").save(output)
+    report = scan_path(output, forbidden_tokens=[])
+    assert report.automated_checks_passed
+    assert report.requires_manual_visual_review
+    assert not report.passed
+
+
+def test_errors_do_not_echo_private_identifier():
+    with pytest.raises(ValueError) as exc:
+        neutral_id("Secret Supplier LLC", 1)
+    assert "Secret Supplier LLC" not in str(exc.value)
