@@ -6,7 +6,7 @@
 
 `Stage 0 — Project Foundation`.
 
-Репозиторий только создан. Production-код закупочного агента ещё не принят и не должен появляться до принятия Stage 0.
+Foundation разрабатывается в PR #1 `stage0/project-foundation`. Production-код закупочного агента ещё не принят и не должен появляться до принятия Stage 0.
 
 ## Текущая архитектурная позиция
 
@@ -31,6 +31,10 @@
 - public fixture policy.
 
 ## Следующее каноническое действие
+
+Заморозить exact HEAD PR #1 и провести свежий независимый read-only semantic review foundation по `.agents/skills/code-review/SKILL.md` с bootstrap authority от исходного BASE.
+
+Если review находит material finding, исправить его в PR #1 и повторить review на новом exact HEAD. Если review PASS и live identity не изменилась, перевести PR в Ready и принять Stage 0.
 
 После принятия Stage 0 открыть `Stage 1 — Document Intake Benchmark`:
 
