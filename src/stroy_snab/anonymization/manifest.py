@@ -23,6 +23,7 @@ _ALLOWED_ROLES = {
     "OTHER",
 }
 _ALLOWED_PROVENANCE = {"anonymized-real", "synthetic", "minimal-redacted", "public-source"}
+_REAL_DERIVED_PROVENANCE = {"anonymized-real", "minimal-redacted"}
 _FORBIDDEN_KEY_FRAGMENTS = {
     "source_path",
     "source_filename",
@@ -80,7 +81,8 @@ def validate_public_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     if manifest.get("schema_version") != "1.0":
         raise ValueError("schema_version must be '1.0'")
     validate_neutral_id(manifest.get("case_id", ""))
-    if manifest.get("provenance") not in _ALLOWED_PROVENANCE:
+    provenance = manifest.get("provenance")
+    if provenance not in _ALLOWED_PROVENANCE:
         raise ValueError("unsupported provenance")
 
     documents = manifest.get("documents")
@@ -102,8 +104,12 @@ def validate_public_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
             raise ValueError("derivative_files must be a non-empty list of relative paths")
         for item in files:
             _validate_derivative_path(item)
-        if not isinstance(doc.get("manual_visual_review"), bool):
+        manual_visual_review = doc.get("manual_visual_review")
+        if not isinstance(manual_visual_review, bool):
             raise ValueError("manual_visual_review must be boolean")
+        has_visual_derivative = any(PurePosixPath(item).suffix.lower() == ".png" for item in files)
+        if provenance in _REAL_DERIVED_PROVENANCE and has_visual_derivative and not manual_visual_review:
+            raise ValueError("real-derived visual fixtures require completed manual visual review")
     return manifest
 
 
