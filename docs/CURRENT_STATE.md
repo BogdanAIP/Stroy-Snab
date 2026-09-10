@@ -4,62 +4,69 @@
 
 ## Текущий этап
 
-`Stage 0 — Project Foundation`.
+`Stage 1P — Anonymization Pipeline`.
 
-Foundation разрабатывается в PR #1 `stage0/project-foundation`. Production-код закупочного агента ещё не принят и не должен появляться до принятия Stage 0.
+Stage 0 foundation принят после свежего независимого exact-head review `PASS` на HEAD `a0f400409a37190e8621a2e59e2e1d02ed000a2b` и слит в `main` merge-коммитом `44610bd33eff346f21414fc5b4513195682cbb76`.
+
+Активная работа Stage 1P ведётся в ветке `stage1p/anonymization-research`. Production procurement logic по-прежнему не вводится.
 
 ## Текущая архитектурная позиция
 
 - Stroy-Snab — отдельный domain product, не CAP fork.
-- CAP рассматривается как будущий внешний trusted execution/verification provider.
-- Выбор ERP/PIM/matching stack пока не принят.
-- Предварительные кандидаты перечислены в `REUSE_BASELINE.md` и имеют research-only статус.
-- Сырые реальные заявки/счета/УПД/входной контроль остаются вне GitHub.
-- Реальные документы должны поступать в публичный репозиторий как `anonymized-real` fixtures после обязательного полного Anonymization Gate: без названий компаний, реквизитов/идентификаторов и без утечек через скрытые структуры файла.
-- Товарная часть, единицы, количества, технические обозначения и layout по возможности сохраняются реалистичными для benchmark, если комбинация полей не создаёт существенного риска повторной идентификации.
-- Реальный lifecycle моделируется many-to-many: нельзя предполагать `1 строка заявки = 1 строка счёта = 1 строка УПД/входного контроля`.
+- CAP остаётся будущим внешним trusted execution/verification provider.
+- Реальный procurement lifecycle моделируется many-to-many через `ProcurementCaseGraph`.
+- Lifecycle linkage не означает техническую эквивалентность товара.
+- Raw заявки/счета/УПД/спецификации/входной контроль/Drive corpus остаются вне публичного GitHub.
+- Публичные real-derived fixtures допускаются только как `anonymized-real` после полного Anonymization Gate.
+- Для Stage 1P выбран research decision `NARROW`: allowlist reconstruction + dual derivative fixtures + независимый format-aware leak-check. Universal in-place Office/PDF redaction не является default path.
+- Целевой локальный профиль: Windows 11 x64, **16 GB RAM, CPU-first, без обязательной NVIDIA/CUDA**; тяжёлые модели разрешены только как optional fallback.
 
-## Доступный raw source corpus для Stage 1
+## Доступный raw source corpus
 
-На 2026-09-10 предоставлены три дополнительных архива:
+На 2026-09-10 уже предоставлены:
 
 - `Заявки.zip`: 127 файлов, включая 122 `.xlsx` заявки;
-- `счета.zip`: 125 файлов счетов/сканов (`jpg/pdf/jpeg` плюс один архивный контейнер);
-- `Входной контроль материалов.zip`: 19 файлов, включая таблицы входного контроля, спецификации и сводные поставки.
+- `счета.zip`: 125 файлов счетов/сканов;
+- `Входной контроль материалов.zip`: 19 файлов, включая таблицы входного контроля, спецификации и сводные поставки;
+- УПД из пользовательской Library;
+- расширенный corpus загружается в Google Drive.
 
-В основной таблице входного контроля обнаружено 1432 непустых товарных строки. Для 628 строк заполнено поле ссылки на заявку, для 658 — поле ссылки на счёт; также присутствуют подрядчик и вид работ. Эти ссылки рассматриваются как ценный источник human-created linkage evidence, но перед публичным использованием все identity/requisites проходят Anonymization Gate.
+Raw corpus не становится dataset автоматически. Он служит только частным источником для подготовки безопасных производных cases и закрытых контрольных проверок.
 
-Среди счетов есть отдельные файлы/папки, явно привязанные именованием к номерам заявок, что даёт дополнительный источник linkage gold. Имена/реквизиты реальных контрагентов не должны переноситься в публичные manifests.
+## Stage 1P research result
 
-Пользователь также загружает расширенный raw corpus в Google Drive. Он не считается частью публичного dataset автоматически и должен пройти тот же Stage 1P pipeline перед любым попаданием производных данных в GitHub.
+Canonical research brief: `docs/research/STAGE1P_ANONYMIZATION_RESEARCH.md`.
 
-## Stage 0 acceptance target
+Decision: `NARROW`.
 
-Должны быть приняты:
+Разрешённый экспериментальный scope:
 
-- product/non-goals;
-- repository governance;
-- architecture boundary;
-- procurement lifecycle graph boundary;
-- reuse-first baseline;
-- data/privacy policy и full-file Anonymization Gate;
-- evaluation policy;
-- staged roadmap;
-- research/review skills;
-- anonymized-real/public fixture policy.
+1. безопасная inventory/manifest модель без исходных реквизитов и обратимых ids;
+2. XLSX: читать структуру нативно и собирать новый sanitized workbook только из allowlisted данных;
+3. PDF/image: использовать rendered-pixel derivative и новый inert container вместо сохранения исходного PDF object graph как default;
+4. отдельный leak-check видимого и внутреннего содержимого производного файла;
+5. synthetic leak fixtures + bounded private sample;
+6. измерять privacy blocking metrics, utility, RAM, disk и runtime на CPU-first 16 GB target.
+
+Не разрешено этим research decision:
+
+- универсальный in-place sanitizer исходных Office/PDF;
+- публикация overlay-only redaction;
+- heavy VLM/OCR как обязательный runtime;
+- переход к Stage 1A extraction stack без завершения Stage 1P gate;
+- ERP/PIM/supplier/action implementation.
 
 ## Следующее каноническое действие
 
-Заморозить exact HEAD PR #1 и провести свежий независимый read-only semantic review foundation по `.agents/skills/code-review/SKILL.md` с bootstrap authority от исходного BASE.
+Реализовать минимальный Stage 1P prototype в текущей ветке:
 
-Если review находит material finding, исправить его в PR #1 и повторить review на новом exact HEAD. Если review PASS и live identity не изменилась, перевести PR в Ready и принять Stage 0.
+1. case-id / safe manifest contract;
+2. synthetic fixtures с намеренными утечками для leak-check regression;
+3. XLSX allowlist reconstruction prototype;
+4. PDF/image inert visual derivative prototype;
+5. format-aware leak checker;
+6. bounded private smoke test без коммита raw данных;
+7. зафиксировать runtime/peak-memory/temp-disk evidence;
+8. после material stability заморозить exact HEAD и провести свежий независимый read-only review.
 
-После принятия Stage 0 открыть `Stage 1 — Document Intake & Lifecycle Benchmark` в порядке:
-
-1. **Stage 1P** — инвентаризация raw corpus и исследование/реализация воспроизводимого format-aware anonymization pipeline;
-2. создать первую партию `anonymized-real` и доказать отсутствие известных утечек видимых и скрытых данных;
-3. **Stage 1A** — определить канонические `Document` / `ProcurementLine` schemas, extraction gold и сравнить готовые extractors;
-4. **Stage 1B** — определить lifecycle-link schema, построить gold many-to-many связей и сравнить linkage approaches;
-5. принять только минимальный anonymization/extraction/linkage stack, доказавший качество на реальных документах.
-
-До Stage 1 не выбирать окончательно ERPNext/OpenConstructionERP, ETIM matcher или supplier providers: эти решения должны опираться на измеренные требования, а не на предположения.
+Stage 1A начинается только после принятия Stage 1P gate.
