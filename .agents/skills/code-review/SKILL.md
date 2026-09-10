@@ -8,7 +8,7 @@ metadata:
 
 # Independent Code Review
 
-Run in a fresh ordinary-ChatGPT context when `AGENTS.md` requires terminal review.
+Run in a fresh ordinary-ChatGPT context when accepted `AGENTS.md` requires terminal review. For the one-time Stage 0 bootstrap PR, use the explicit bootstrap rule below; this HEAD skill is target semantics/checklist only and does not grant itself acceptance authority.
 
 ## Input identity
 
@@ -20,14 +20,28 @@ repository=BogdanAIP/Stroy-Snab
 pr_number=<n>
 base_sha=<40 hex>
 head_sha=<40 hex>
-review_policy_ref=<immutable accepted ref>
+review_policy_ref=<immutable accepted/bootstrap ref>
 ```
 
 If identity is missing or live PR refs differ, return `ABSTAIN` or `STALE`; never silently review another head.
 
+## One-time Stage 0 bootstrap review
+
+Only for PR #1 whose exact BASE is:
+
+`2397b487a3e7b4a0c8b7599f69c72e600ee9f6c2`
+
+use:
+
+`review_policy_ref=2397b487a3e7b4a0c8b7599f69c72e600ee9f6c2`.
+
+That BASE contains only the bootstrap README, so there is no previously accepted code-review skill to load. The reviewer must derive acceptance authority from the immutable BASE bootstrap intent that foundation be independently reviewed before production implementation, while treating this HEAD skill and HEAD `AGENTS.md` only as proposed target semantics/checklist. They may be reviewed for adequacy but may not self-certify or weaken the bootstrap requirement.
+
+If PR #1 has another BASE, or this exact bootstrap situation does not hold, return `ABSTAIN` rather than inventing authority. This exception expires permanently after Stage 0 merge.
+
 ## Boundaries
 
-Reviewer is read-only. It independently fetches live PR metadata, complete diff, governing BASE policy, applicable target docs/skills, tests/evals and relevant evidence. Developer prose and PR claims are leads, not acceptance proof.
+Reviewer is read-only. It independently fetches live PR metadata, complete diff, governing BASE policy when one exists, applicable target docs/skills, tests/evals and relevant evidence. Developer prose and PR claims are leads, not acceptance proof.
 
 ## Review priorities
 
@@ -42,6 +56,8 @@ Reviewer is read-only. It independently fetches live PR metadata, complete diff,
 9. eval leakage, contaminated holdout, misleading aggregate metric or baseline omission;
 10. architecture duplication of CAP/external-system responsibility;
 11. concrete test/eval gaps that permit an introduced defect.
+
+For Stage 0 specifically, also verify governance consistency, that raw-data publication is not authorized, that `anonymized-real` publication is gated by full-file sanitization/leak checks, that lifecycle linkage does not imply technical equivalence, and that research candidates are not accidentally adopted as production dependencies.
 
 Do not report style/taste/speculative future work as findings.
 
