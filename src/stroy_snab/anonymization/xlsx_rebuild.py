@@ -14,7 +14,7 @@ def _validate_sheet_name(name: str, forbidden_tokens: Iterable[str]) -> str:
     if not isinstance(name, str) or not name.strip():
         raise ValueError("sheet name must be non-empty")
     if len(name) > 31 or any(char in name for char in "[]:*?/\\"):
-        raise ValueError(f"invalid XLSX sheet name: {name!r}")
+        raise ValueError("invalid XLSX sheet name")
     findings = scan_text(name, location="sheet-name", forbidden_tokens=forbidden_tokens)
     if findings:
         raise ValueError("sheet name contains data blocked by leak policy")
@@ -78,7 +78,7 @@ def write_sanitized_workbook(
         for sheet_spec in sheets:
             unknown = set(sheet_spec) - {"name", "rows", "column_widths", "merges"}
             if unknown:
-                raise ValueError(f"unknown sanitized sheet fields: {sorted(unknown)}")
+                raise ValueError("unknown sanitized sheet fields present")
             name = _validate_sheet_name(sheet_spec.get("name", ""), forbidden_tokens)
             rows = sheet_spec.get("rows")
             if not isinstance(rows, list):
