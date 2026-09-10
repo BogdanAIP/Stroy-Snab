@@ -11,6 +11,7 @@ ordinary ChatGPT / future client
   v
 STROY-SNAB DOMAIN CORE
   |  document model
+  |  procurement-case graph
   |  item normalization
   |  matching/compatibility policy
   |  supplier/offer evidence
@@ -37,6 +38,7 @@ CAP TRUST / EXECUTION / VERIFICATION
 ### Stroy-Snab owns
 
 - domain schemas for procurement documents/items/offers/decisions;
+- procurement-case graph linking requests, commercial documents, deliveries and incoming-control evidence;
 - mapping from raw procurement language to structured evidence;
 - matching state and compatibility policy;
 - supplier/offer evidence semantics;
@@ -57,12 +59,44 @@ Stroy-Snab must not vendor-copy CAP internals to avoid integration work.
 
 ERP/PIM/API native records remain native. Stroy-Snab keeps stable logical references/provenance rather than flattening every external field into a second database without need.
 
+## Procurement lifecycle model
+
+The real corpus shows that procurement is not a 1:1 document or line mapping. One request may be split across suppliers/documents, one line may be fulfilled in several deliveries, several request lines may be merged commercially, quantities may change, and incoming-control records may represent partial, excess or later deliveries.
+
+Stroy-Snab therefore models a **ProcurementCaseGraph**, not a linear pair of files.
+
+```text
+Request / Specification
+          |
+          | many-to-many evidence links
+          v
+Offer / Invoice / other commercial document
+          |
+          v
+UPD / delivery evidence
+          |
+          v
+Incoming Control / material-accounting evidence
+```
+
+Graph nodes are documents and document lines. Edges preserve their evidence source and must distinguish at least:
+
+- explicit reference present in a source document or filename/metadata;
+- human-curated/gold linkage;
+- system-proposed candidate linkage;
+- quantity/fulfilment relation when known.
+
+A proposed semantic similarity must never silently become an authoritative lifecycle link. Ambiguous links remain candidates until evidence or accepted matching rules resolve them.
+
+The graph must support one-to-one, one-to-many, many-to-one and many-to-many relationships. No stage may assume `request line == invoice line == UPD line`.
+
 ## Initial domain pipeline
 
 ```text
 SourceDocument
  -> DocumentExtraction
  -> ProcurementLine(raw)
+ -> ProcurementCaseGraph links
  -> NormalizedItemEvidence
  -> MatchCandidates
  -> CompatibilityDecision
@@ -70,7 +104,7 @@ SourceDocument
  -> ProcurementRecommendation
 ```
 
-Every transformation should preserve a locator/provenance link to the input evidence.
+Every transformation and every graph edge should preserve a locator/provenance link to the input evidence.
 
 ## Matching safety invariant
 
@@ -86,6 +120,8 @@ raw candidate
 ```
 
 Any unresolved critical property blocks `EXACT` and normally blocks `EQUIVALENT` unless a specific accepted rule says otherwise.
+
+Lifecycle linkage and technical equivalence are separate questions: two lines may be explicitly linked by the procurement process while the technical substitution still requires `CANDIDATE/UNKNOWN` or human approval.
 
 ## Persistence
 
