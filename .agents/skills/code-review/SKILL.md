@@ -33,14 +33,15 @@ Reviewer is read-only. It independently fetches live PR metadata, complete diff,
 
 1. concrete wrong extraction/normalization/matching result;
 2. false `EQUIVALENT` or unsafe downgrade of required evidence;
-3. private/commercial data leakage into public repository/logs/fixtures;
-4. wrong units/quantities/identity/provenance;
-5. stale supplier/offer facts presented as current;
-6. consequence-bearing duplicate/retry/authorization failures;
-7. dependency added without accepted research/evidence or with incompatible license;
-8. eval leakage, contaminated holdout, misleading aggregate metric or baseline omission;
-9. architecture duplication of CAP/external-system responsibility;
-10. concrete test/eval gaps that permit an introduced defect.
+3. private/commercial data leakage into public repository/logs/fixtures, including hidden file metadata, hidden sheets/cells, comments/formulas/links, revision data, embedded objects, PDF OCR/text layers, attachments, filenames and ineffective overlay-only redaction;
+4. re-identification risk from combinations of otherwise permitted fields;
+5. wrong lifecycle links, units, quantities, identity or provenance;
+6. stale supplier/offer facts presented as current;
+7. consequence-bearing duplicate/retry/authorization failures;
+8. dependency added without accepted research/evidence or with incompatible license;
+9. eval leakage, contaminated holdout, misleading aggregate metric or baseline omission;
+10. architecture duplication of CAP/external-system responsibility;
+11. concrete test/eval gaps that permit an introduced defect.
 
 Do not report style/taste/speculative future work as findings.
 
