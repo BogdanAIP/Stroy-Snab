@@ -16,6 +16,8 @@ Gate: свежий независимый review foundation PR.
 
 Сырые Library/ZIP/Drive-документы остаются вне GitHub; в репозиторий поступает только `anonymized-real` corpus после полного Anonymization Gate.
 
+Для обязательного локального пути действует CPU-first product target: Windows 11 x64, 16 GB RAM, без обязательной NVIDIA/CUDA. Stage 1 эксперименты измеряют не только качество, но и peak RAM, временный disk use и runtime; тяжёлые модели могут быть только optional fallback, пока отдельное принятое решение не изменит этот target.
+
 ### Stage 1P — Anonymization pipeline
 
 До OCR/extraction построить воспроизводимый format-aware pipeline подготовки публичных производных данных.
@@ -33,7 +35,7 @@ Gate: свежий независимый review foundation PR.
 
 Предпочитать заново собранные sanitized derivatives исходным Office/PDF контейнерам, если нельзя уверенно доказать очистку всех внутренних частей.
 
-Gate 1P: первая репозиторная партия `anonymized-real` проходит автоматический/format-aware leak-check + ручную выборочную проверку без известных `ANONYMIZATION_LEAK`.
+Gate 1P: первая репозиторная партия `anonymized-real` проходит автоматический/format-aware leak-check + ручную выборочную проверку без известных `ANONYMIZATION_LEAK`; prototype укладывается в CPU-first 16 GB target без обязательной CUDA/NVIDIA и имеет измеренные runtime/RAM/disk characteristics.
 
 ### Stage 1A — Document extraction
 
