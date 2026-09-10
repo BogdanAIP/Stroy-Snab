@@ -9,6 +9,7 @@ description = "Evidence-driven construction procurement domain tooling"
 requires-python = ">=3.11"
 dependencies = [
   "XlsxWriter>=3.2.9,<4",
+  "Pillow>=12,<13",
 ]
 
 [project.optional-dependencies]
