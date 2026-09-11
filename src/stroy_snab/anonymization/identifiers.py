@@ -4,6 +4,12 @@ import re
 from typing import Iterator
 
 _DIGIT_TOKEN_RE = re.compile(r"(?<!\d)\d{10,15}(?!\d)")
+_GROUPED_DIGIT_RE = re.compile(r"(?<!\w)(?:\d[\s\-\u00a0\u2009]?){10,15}(?!\w)")
+
+
+def normalize_identifier_digits(value: str) -> str:
+    """Remove separators from grouped digit identifiers before validation."""
+    return re.sub(r"[\s\-\u00a0\u2009]", "", value)
 
 
 def _weighted_mod11_digit(digits: str, coefficients: tuple[int, ...]) -> int:
@@ -11,6 +17,7 @@ def _weighted_mod11_digit(digits: str, coefficients: tuple[int, ...]) -> int:
 
 
 def is_inn(value: str) -> bool:
+    value = normalize_identifier_digits(value)
     if not value.isdigit():
         return False
     if len(value) == 10:
@@ -18,12 +25,13 @@ def is_inn(value: str) -> bool:
         return int(value[9]) == expected
     if len(value) == 12:
         digit11 = _weighted_mod11_digit(value[:10], (7, 2, 4, 10, 3, 5, 9, 4, 6, 8))
-        digit12 = _weighted_mod11_digit(value[:10] + str(digit11), (3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8))
+        digit12 = _weighted_mod11_digit(value[:10] + str(digit11), (3, 7, 2, 4, 10, 3, 5, 9, 6, 8))
         return int(value[10]) == digit11 and int(value[11]) == digit12
     return False
 
 
 def is_ogrn(value: str) -> bool:
+    value = normalize_identifier_digits(value)
     if not value.isdigit():
         return False
     if len(value) == 13:
@@ -35,8 +43,8 @@ def is_ogrn(value: str) -> bool:
 
 def iter_unlabeled_tax_identifiers(text: str) -> Iterator[str]:
     """Yield identifier kinds only; never return or log matched private values."""
-
-    for match in _DIGIT_TOKEN_RE.finditer(text):
+    normalized = normalize_identifier_digits(text)
+    for match in _DIGIT_TOKEN_RE.finditer(normalized):
         value = match.group(0)
         if is_inn(value):
             yield "inn_unlabeled"
