@@ -1,0 +1,1 @@
+"""Stroy-Snab domain tooling."""

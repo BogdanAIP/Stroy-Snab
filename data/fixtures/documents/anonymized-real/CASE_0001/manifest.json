@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "case_id": "CASE_0001",
+  "provenance": "anonymized-real",
+  "documents": [
+    {
+      "document_id": "REQUEST_0001",
+      "role": "REQUEST",
+      "format": "xlsx",
+      "derivative_files": ["REQUEST_0001/document.xlsx"],
+      "manual_visual_review": false
+    }
+  ]
+}
