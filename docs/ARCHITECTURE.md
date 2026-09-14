@@ -94,6 +94,7 @@ The graph must support one-to-one, one-to-many, many-to-one and many-to-many rel
 
 ```text
 SourceDocument
+ -> SanitizedDerivative (for public real-derived fixtures)
  -> DocumentExtraction
  -> ProcurementLine(raw)
  -> ProcurementCaseGraph links
@@ -104,7 +105,33 @@ SourceDocument
  -> ProcurementRecommendation
 ```
 
-Every transformation and every graph edge should preserve a locator/provenance link to the input evidence.
+Every transformation and every graph edge should preserve a locator/provenance link to the input evidence without exposing private reverse identifiers in public artifacts.
+
+## Local runtime target
+
+The supported local architecture is deliberately **CPU-first**.
+
+Baseline target for ordinary desktop use:
+
+```text
+Windows 11 x64
+RAM: 16 GB
+CPU: 4+ cores / 8+ logical threads
+GPU: optional
+CUDA/NVIDIA: not required
+storage: SSD; bounded temporary-file use
+```
+
+Architecture rules:
+
+- no mandatory component may require NVIDIA/CUDA;
+- corpus processing is streaming/per-document or small-batch, not whole-corpus-in-memory;
+- native parsing is preferred for XLSX and digital PDFs before OCR/model inference;
+- heavyweight VLM/OCR/model paths are optional fallbacks and may run remotely when local resource cost is disproportionate;
+- adoption experiments measure peak RAM, temporary disk use and processing time in addition to task quality;
+- a component that materially improves accuracy but makes the normal product unusable on the 16 GB CPU-first target must remain optional unless a later explicit architecture decision changes this target.
+
+This target is a product constraint, not a statement that every optional research model must run locally.
 
 ## Matching safety invariant
 
