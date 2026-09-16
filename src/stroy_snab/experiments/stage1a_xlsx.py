@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 
 import openpyxl
+from openpyxl.utils import get_column_letter
 
 
 class XlsxLineExtractionError(RuntimeError):
@@ -164,7 +165,10 @@ def extract_xlsx_lines(
 
             detected_table = True
             header_row, roles = header
-            for row in worksheet.iter_rows(min_row=header_row + 1):
+            for row_number, row in enumerate(
+                worksheet.iter_rows(min_row=header_row + 1),
+                start=header_row + 1,
+            ):
                 item_cell = row[roles["item"] - 1]
                 item_name = "" if item_cell.value is None else str(item_cell.value).strip()
                 if not item_name:
@@ -178,7 +182,7 @@ def extract_xlsx_lines(
                 if _is_formula(quantity_cell):
                     raise XlsxLineExtractionError(
                         f"formula quantity is unsupported at "
-                        f"{worksheet.title}!{quantity_cell.coordinate}"
+                        f"{worksheet.title}!{get_column_letter(roles['quantity'])}{row_number}"
                     )
 
                 quantity, quantity_unit = _as_quantity(quantity_cell.value)
@@ -195,7 +199,7 @@ def extract_xlsx_lines(
                     if _is_formula(unit_cell):
                         raise XlsxLineExtractionError(
                             f"formula unit is unsupported at "
-                            f"{worksheet.title}!{unit_cell.coordinate}"
+                            f"{worksheet.title}!{get_column_letter(unit_column)}{row_number}"
                         )
                     if unit_cell.value is not None:
                         value = str(unit_cell.value).strip()
@@ -209,7 +213,10 @@ def extract_xlsx_lines(
                         item_name_raw=item_name,
                         unit_raw=unit_raw,
                         quantity=quantity,
-                        source_locator=f"{worksheet.title}!{item_cell.coordinate}",
+                        source_locator=(
+                            f"{worksheet.title}!"
+                            f"{get_column_letter(roles['item'])}{row_number}"
+                        ),
                     )
                 )
     finally:
