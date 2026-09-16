@@ -3,17 +3,15 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import re
 
 from stroy_snab.evaluation.stage1a import evaluate_stage1a, load_gold_documents
-from stroy_snab.experiments.stage1a_xlsx import (
-    ProcurementLine,
-    XlsxLineExtractionError,
-    extract_xlsx_lines,
-)
+from stroy_snab.experiments.stage1a_xlsx import ProcurementLine, extract_xlsx_lines
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GOLD = ROOT / "data" / "gold" / "stage1a" / "public_anonymized_real.json"
+_SAFE_DATASET_LABEL = re.compile(r"^[A-Za-z0-9_.-]{1,80}$")
 
 
 def _resolve_document_path(root: Path, value: str) -> Path:
@@ -21,6 +19,16 @@ def _resolve_document_path(root: Path, value: str) -> Path:
     if path.is_absolute():
         return path
     return root / path
+
+
+def _safe_error_payload(dataset_label: str) -> dict[str, object]:
+    return {
+        "experiment": "stage1a_xlsx_evaluation",
+        "dataset": dataset_label,
+        "evaluation_status": "ERROR",
+        "content_logged": False,
+        "paths_logged": False,
+    }
 
 
 def main() -> None:
@@ -34,31 +42,52 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    gold_documents = load_gold_documents(args.gold)
-    predictions: list[ProcurementLine] = []
-    extraction_failures = 0
-
-    for document in gold_documents:
-        try:
-            lines = extract_xlsx_lines(
-                _resolve_document_path(args.root, document.path),
-                document_id=document.document_id,
-                document_role=document.document_role,
+    if _SAFE_DATASET_LABEL.fullmatch(args.dataset_label) is None:
+        print(
+            json.dumps(
+                _safe_error_payload("INVALID_DATASET_LABEL"),
+                ensure_ascii=False,
+                sort_keys=True,
             )
-        except (XlsxLineExtractionError, OSError, ValueError):
-            extraction_failures += 1
-            continue
-        predictions.extend(lines)
+        )
+        raise SystemExit(2)
 
-    evaluation = evaluate_stage1a(
-        gold_documents,
-        predictions,
-        extraction_failures=extraction_failures,
-    )
+    try:
+        gold_documents = load_gold_documents(args.gold)
+        predictions: list[ProcurementLine] = []
+        extraction_failures = 0
+
+        for document in gold_documents:
+            try:
+                lines = extract_xlsx_lines(
+                    _resolve_document_path(args.root, document.path),
+                    document_id=document.document_id,
+                    document_role=document.document_role,
+                )
+            except Exception:
+                extraction_failures += 1
+                continue
+            predictions.extend(lines)
+
+        evaluation = evaluate_stage1a(
+            gold_documents,
+            predictions,
+            extraction_failures=extraction_failures,
+        )
+    except Exception:
+        print(
+            json.dumps(
+                _safe_error_payload(args.dataset_label),
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+        raise SystemExit(2)
 
     payload = {
         "experiment": "stage1a_xlsx_evaluation",
         "dataset": args.dataset_label,
+        "evaluation_status": "PASS" if extraction_failures == 0 else "FAIL",
         **evaluation.as_metrics(),
         "content_logged": False,
         "paths_logged": False,
