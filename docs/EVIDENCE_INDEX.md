@@ -172,13 +172,13 @@ Authorized first experiment:
 
 PR #3 BASE: `15df096e5f8aacca56ed78c04f7b470d6a61fea6`.
 
-Implementation head before evidence-only document synchronization:
+Historical implementation head:
 
 `96f9690eb37196ad414f002d90f98dab534415a4`.
 
 Hosted workflow run `35101156575` / run #74: **SUCCESS**.
 
-Matrix results:
+Matrix results on that historical implementation head:
 
 - Ubuntu / Python 3.11: **49 tests passed**; public Stage 1A benchmark: 1 XLSX document, 1 extracted line, ~3.273 ms;
 - Ubuntu / Python 3.13: tests + Stage 1A benchmark SUCCESS;
@@ -192,17 +192,37 @@ Benchmark safety:
 - `content_logged=false`;
 - no raw Drive/Library/ZIP document is a CI dependency.
 
-Observed real-fixture failure/remediation:
+Observed public-fixture lesson:
 
-- initial implementation detected the public table but extracted zero lines because `CASE_0001` stores quantity and unit together in one quantity cell (for example the public fixture shape is numeric quantity + unit token);
-- the baseline was narrowed to parse a leading numeric quantity plus optional unit suffix;
-- a deterministic regression was added for the same structural shape;
-- separate unit columns still override the suffix when present;
-- the corrected implementation passed the public fixture on Linux and Windows.
+- the first baseline failed because quantity and unit may share one cell;
+- the implementation added a generic combined quantity/unit path rather than fixture-specific constants.
 
-This is provisional Stage 1A experiment evidence, not a final extraction-accuracy claim. Human gold labels and corpus-level precision/recall are still required.
+This is provisional experiment evidence only. It is **not** an accuracy claim and does not certify the current PR HEAD.
 
-Because updating this evidence file moves HEAD, the final candidate HEAD after evidence synchronization must pass hosted CI again before independent review.
+## Stage 1A — independent review #1
+
+Reviewed exact identity:
+
+- repository: `BogdanAIP/Stroy-Snab`;
+- PR: `#3`;
+- BASE: `15df096e5f8aacca56ed78c04f7b470d6a61fea6`;
+- reviewed HEAD: `370be6763465b608dc032a97580905e31ea8d545`;
+- review policy ref: accepted BASE `15df096e5f8aacca56ed78c04f7b470d6a61fea6`;
+- skill: `code-review` v1.0;
+- terminal result: **FAIL**;
+- surviving findings: **5**.
+
+Accepted remediation targets from the review:
+
+1. reject ambiguous quantity syntax instead of converting a numeric prefix plus arbitrary remainder into quantity/unit;
+2. prevent `Количество мест` or multiple quantity-like columns from silently winning over the true line quantity;
+3. preserve a unit recovered from a quantity cell when an explicit unit cell is blank/whitespace;
+4. fail closed on formulas/partial extraction instead of silently dropping candidate rows;
+5. keep canonical evidence text time-stable: current exact-head CI/review state must be resolved live rather than inferred from a stale statement in this file.
+
+Current branch remediation implements these targets and adds deterministic regressions for the concrete reviewed cases.
+
+No terminal acceptance is recorded here yet. The exact current PR HEAD, hosted CI state and repeated independent review must be resolved from live GitHub immediately before merge. A future `PASS` must be bound to that exact frozen HEAD.
 
 ## Future research inputs
 
