@@ -159,14 +159,33 @@ Remediation in the current branch:
 - formula item cells fail closed before item-name conversion;
 - regression tests cover the merged multi-row header, subtotal followed by more content, formula item and supplier-name-table cases.
 
+## PR #4 evaluation result
+
+Public anonymized-real evaluation on the accepted fixture is reproducible in hosted CI and reports perfect metrics on the single public document.
+
+Bounded private control `PRIVATE_XLSX_CONTROL_2026-09-16_A` used 4 raw XLSX request documents / 28 human-adjudicated gold lines outside GitHub.
+
+Aggregate private result:
+
+- line detection precision/recall: 1.00 / 1.00;
+- item exact accuracy: 1.00;
+- quantity exact accuracy: 1.00;
+- unit exact accuracy: 0.8571 (24/28);
+- strict line accuracy: 0.8571;
+- document-perfect rate: 0.75 (3/4);
+- extraction failures: 0.
+
+The measured gap is structural rather than semantic: one real template contains unit values in an adjacent column whose header is blank. The current baseline intentionally does not guess that column, so item/quantity extraction remains correct while four units stay unknown.
+
+This gap is **not fixed inside PR #4**. It is the next bounded Stage 1A extraction experiment after PR #4 acceptance.
+
 ## Immediate next action
 
-1. obtain hosted CI evidence for PR #4;
-2. run the aggregate-safe evaluator on the accepted public anonymized-real gold;
-3. perform a bounded private XLSX control without committing raw documents or labels containing private identity;
-4. record only aggregate/opaque evidence if the private control is useful;
-5. freeze exact PR #4 BASE/HEAD;
-6. run fresh independent exact-head semantic review before merge.
+1. obtain SUCCESS hosted CI on the final evidence-synchronized PR #4 HEAD;
+2. freeze exact `BASE_SHA / HEAD_SHA`;
+3. perform fresh independent exact-head semantic review under accepted `.agents/skills/code-review/SKILL.md` v1.0;
+4. merge PR #4 only on exact-head PASS with zero surviving findings;
+5. next Stage 1A PR: test an explicit, fail-closed structural rule for unlabeled adjacent unit columns against public regressions and the same opaque private control.
 
 ## Stage 1A work still not completed by PR #3
 
