@@ -77,11 +77,11 @@ Accepted baseline includes:
 
 Final pre-merge candidate was `79724de933958ba6dde0f3e2b4ac1c01accfdf02`; hosted workflow #92 passed all required matrices and confirmed review findings were remediated before merge.
 
-## Active PR #4 scope
+## Accepted PR #4 implemented scope
 
-PR #4: `Stage 1A: add XLSX extraction evaluation harness`.
+PR #4: `Stage 1A: add XLSX extraction evaluation harness` is accepted and merged.
 
-Current scope:
+Accepted scope:
 
 - public anonymized-real gold labels for accepted `CASE_0001 / REQUEST_0001`;
 - E1A line detection precision/recall;
@@ -244,6 +244,37 @@ Remediation:
 - workbook/parser warnings therefore become ordinary aggregate extraction failures and cannot write raw warning text to stderr;
 - regressions reproduce both the stale `--dataset-label PRIVATE_SUPPLIER_SECRET.xlsx` invocation and a real openpyxl malformed Print_Area warning containing a private worksheet title.
 
+## PR #5 provisional evaluation result
+
+Hosted workflow on implementation/evidence pre-sync head `fae7b576378d7ae0b598b1081f91da4639692f60`:
+
+- run `35140479068` / #108: SUCCESS;
+- Ubuntu Python 3.11: 86 tests PASS;
+- Ubuntu Python 3.13: 86 tests PASS;
+- Windows Python 3.13: 86 tests PASS;
+- public anonymized-real benchmark/evaluation unchanged and PASS.
+
+Repeated private control `PRIVATE_CONTROL_0001` on the same 4 documents / 28 gold lines reproduced the accepted PR #4 baseline when the new inference was disabled:
+
+- unit exact: 24/28 = 0.8571;
+- strict line: 24/28 = 0.8571;
+- document-perfect: 3/4 = 0.75;
+- extraction failures: 0.
+
+With the PR #5 rule enabled:
+
+- predicted lines: 28/28;
+- line detection precision/recall: 1.00 / 1.00;
+- item exact: 1.00;
+- quantity exact: 1.00;
+- role exact: 1.00;
+- unit exact: 28/28 = 1.00;
+- strict line: 28/28 = 1.00;
+- document-perfect: 4/4 = 1.00;
+- extraction failures: 0.
+
+No raw filenames, item values, worksheet titles, paths or reverse mapping are recorded in repository evidence.
+
 ## Immediate next action
 
 1. obtain hosted CI for PR #5 across the required Linux/Windows matrix;
@@ -252,9 +283,9 @@ Remediation:
 4. reject or narrow the rule if any previously correct line/item/quantity behavior regresses;
 5. if evidence is positive, freeze exact PR #5 BASE/HEAD and run fresh independent exact-head semantic review before merge.
 
-## Stage 1A work still not completed by PR #3
+## Stage 1A work still not completed
 
-Even if PR #3 is accepted, Stage 1A remains open.
+Stage 1A remains open after PR #4 and the current PR #5 experiment.
 
 Still required:
 
