@@ -142,14 +142,109 @@ Remediation completed on the development branch:
 
 The first clean-history remediation head `06ec361133d3499f93fc74bdb63dbaccab6e7f74` passed hosted workflow `34510372197` across Linux 3.11, Linux 3.13 and Windows 3.13. Each matrix reported **40 tests passed**. Windows benchmark: approximately **0.534 s / 110.2 MB / 0.6 MB**; Linux 3.13: approximately **0.538 s / 110.6 MB / 0.6 MB**. Subsequent API/document hardening moves HEAD and therefore still requires final exact-head CI and a fresh independent review.
 
-## Stage 1P — evidence still required before acceptance
+## Stage 1P — accepted
 
-- obtain **SUCCESS** hosted CI on the final candidate HEAD after this final canonical synchronization;
-- freeze exact BASE/HEAD without further repository changes;
-- obtain fresh independent exact-head semantic review using accepted BASE code-review skill v1.0;
-- if review causes any material code/doc fix, repeat exact-head CI and review on the new HEAD.
+Terminal acceptance:
 
-A future smoke-run on the user's exact Windows 11 machine is useful confirmation of the product target but is not represented as already completed evidence and is not required to establish that the current mandatory stack has a large 16 GB resource margin.
+- accepted BASE: `44610bd33eff346f21414fc5b4513195682cbb76`;
+- reviewed Stage 1P HEAD: `a6360a18c15efb4db84b3bedf8b1bfae4cbc4ee2`;
+- independent exact-head semantic review: `PASS`, surviving findings `0`, accepted code-review skill v1.0;
+- final hosted workflow referenced by PR #2: run `34814297721`, Linux 3.11/3.13 and Windows 3.13 all SUCCESS with 43 tests per matrix;
+- merge commit on `main`: `15df096e5f8aacca56ed78c04f7b470d6a61fea6` on 2026-09-14.
+
+Stage 1P is no longer an open gate. Stage 1A may proceed under a new research decision.
+
+## Stage 1A — research
+
+Research brief: `docs/research/STAGE1A_DOCUMENT_EXTRACTION_RESEARCH.md`.
+
+Decision: `NARROW`.
+
+Authorized first experiment:
+
+- deterministic native XLSX extraction using openpyxl;
+- canonical fields: document id/role, raw item name, raw unit, quantity, source locator;
+- synthetic regression tests plus accepted public anonymized-real fixture;
+- Docling and PaddleOCR/PP-StructureV3 remain deferred candidates for a separate PDF/image experiment;
+- no supplier discovery, matching/equivalence, raw-corpus publication or consequence-bearing integration.
+
+## Stage 1A — provisional XLSX experiment evidence
+
+PR #3 BASE: `15df096e5f8aacca56ed78c04f7b470d6a61fea6`.
+
+Historical implementation head:
+
+`96f9690eb37196ad414f002d90f98dab534415a4`.
+
+Hosted workflow run `35101156575` / run #74: **SUCCESS**.
+
+Matrix results on that historical implementation head:
+
+- Ubuntu / Python 3.11: **49 tests passed**; public Stage 1A benchmark: 1 XLSX document, 1 extracted line, ~3.273 ms;
+- Ubuntu / Python 3.13: tests + Stage 1A benchmark SUCCESS;
+- Windows / Python 3.13.15: **49 tests passed**; public Stage 1A benchmark: 1 XLSX document, 1 extracted line, ~4.942 ms.
+
+Benchmark safety:
+
+- dataset: accepted public `anonymized-real` corpus;
+- current public sample: `CASE_0001 / REQUEST_0001`;
+- benchmark logs record only aggregate document/line counts and runtime;
+- `content_logged=false`;
+- no raw Drive/Library/ZIP document is a CI dependency.
+
+Observed public-fixture lesson:
+
+- the first baseline failed because quantity and unit may share one cell;
+- the implementation added a generic combined quantity/unit path rather than fixture-specific constants.
+
+This is provisional experiment evidence only. It is **not** an accuracy claim and does not certify the current PR HEAD.
+
+## Stage 1A — independent review #1
+
+Reviewed exact identity:
+
+- repository: `BogdanAIP/Stroy-Snab`;
+- PR: `#3`;
+- BASE: `15df096e5f8aacca56ed78c04f7b470d6a61fea6`;
+- reviewed HEAD: `370be6763465b608dc032a97580905e31ea8d545`;
+- review policy ref: accepted BASE `15df096e5f8aacca56ed78c04f7b470d6a61fea6`;
+- skill: `code-review` v1.0;
+- terminal result: **FAIL**;
+- surviving findings: **5**.
+
+Accepted remediation targets from the review:
+
+1. reject ambiguous quantity syntax instead of converting a numeric prefix plus arbitrary remainder into quantity/unit;
+2. prevent `Количество мест` or multiple quantity-like columns from silently winning over the true line quantity;
+3. preserve a unit recovered from a quantity cell when an explicit unit cell is blank/whitespace;
+4. fail closed on formulas/partial extraction instead of silently dropping candidate rows;
+5. keep canonical evidence text time-stable: current exact-head CI/review state must be resolved live rather than inferred from a stale statement in this file.
+
+Current branch remediation implements these targets and adds deterministic regressions for the concrete reviewed cases.
+
+No terminal acceptance is recorded here yet. The exact current PR HEAD, hosted CI state and repeated independent review must be resolved from live GitHub immediately before merge. A future `PASS` must be bound to that exact frozen HEAD.
+
+## Stage 1A — independent review #2
+
+Reviewed exact identity:
+
+- repository: `BogdanAIP/Stroy-Snab`;
+- PR: `#3`;
+- BASE: `15df096e5f8aacca56ed78c04f7b470d6a61fea6`;
+- reviewed HEAD: `13dfee3f5b15a98b985f90d422d651e75f27fed5`;
+- review policy ref: accepted BASE `15df096e5f8aacca56ed78c04f7b470d6a61fea6`;
+- skill: `code-review` v1.0;
+- terminal result: **FAIL**;
+- surviving findings: **4**.
+
+Accepted remediation targets from review #2:
+
+1. reject merged/multi-row header continuations instead of treating a parent `Количество` header as a final line-quantity column;
+2. prevent `Итого/Всего` from silently truncating a worksheet when later non-empty procurement content exists;
+3. reject formula item cells instead of serializing the Excel expression as `item_name_raw`;
+4. constrain item-header recognition so unrelated tables such as `Наименование поставщика | Количество` fail closed.
+
+Current branch remediation implements these targets with deterministic regression tests. No terminal acceptance is recorded here yet; exact current HEAD, hosted CI and a new independent review must be resolved live.
 
 ## Future research inputs
 
