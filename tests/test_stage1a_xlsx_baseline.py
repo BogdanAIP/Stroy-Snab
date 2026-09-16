@@ -72,6 +72,27 @@ def test_accepts_header_variants_and_decimal_comma(tmp_path: Path) -> None:
     assert lines[0].unit_raw == "кг"
 
 
+def test_extracts_unit_from_combined_quantity_cell(tmp_path: Path) -> None:
+    path = tmp_path / "request.xlsx"
+    _save(
+        path,
+        [
+            ["№ п/п", "Наименование", "Кол-во", "Комментарий"],
+            [1, "Шпилька резьбовая М12х1000 ОЦ", "48 шт", None],
+        ],
+    )
+
+    lines = extract_xlsx_lines(
+        path,
+        document_id="REQUEST_0003",
+        document_role="REQUEST",
+    )
+
+    assert lines[0].quantity == Decimal("48")
+    assert lines[0].unit_raw == "шт"
+    assert lines[0].source_locator == "Заявка!B2"
+
+
 def test_unit_column_is_optional_but_provenance_is_preserved(tmp_path: Path) -> None:
     path = tmp_path / "request.xlsx"
     _save(
