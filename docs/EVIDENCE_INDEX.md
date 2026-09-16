@@ -224,6 +224,28 @@ Current branch remediation implements these targets and adds deterministic regre
 
 No terminal acceptance is recorded here yet. The exact current PR HEAD, hosted CI state and repeated independent review must be resolved from live GitHub immediately before merge. A future `PASS` must be bound to that exact frozen HEAD.
 
+## Stage 1A — independent review #2
+
+Reviewed exact identity:
+
+- repository: `BogdanAIP/Stroy-Snab`;
+- PR: `#3`;
+- BASE: `15df096e5f8aacca56ed78c04f7b470d6a61fea6`;
+- reviewed HEAD: `13dfee3f5b15a98b985f90d422d651e75f27fed5`;
+- review policy ref: accepted BASE `15df096e5f8aacca56ed78c04f7b470d6a61fea6`;
+- skill: `code-review` v1.0;
+- terminal result: **FAIL**;
+- surviving findings: **4**.
+
+Accepted remediation targets from review #2:
+
+1. reject merged/multi-row header continuations instead of treating a parent `Количество` header as a final line-quantity column;
+2. prevent `Итого/Всего` from silently truncating a worksheet when later non-empty procurement content exists;
+3. reject formula item cells instead of serializing the Excel expression as `item_name_raw`;
+4. constrain item-header recognition so unrelated tables such as `Наименование поставщика | Количество` fail closed.
+
+Current branch remediation implements these targets with deterministic regression tests. No terminal acceptance is recorded here yet; exact current HEAD, hosted CI and a new independent review must be resolved live.
+
 ## Future research inputs
 
 The following must be independently rechecked before adoption in their stages:
