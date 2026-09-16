@@ -25,11 +25,29 @@ class ProcurementLine:
 
 _HEADER_SCAN_LIMIT = 60
 _TOTAL_PREFIXES = ("итого", "всего")
+_ITEM_HEADERS = {
+    "наименование",
+    "наименование товара",
+    "наименование товаров",
+    "наименование материала",
+    "наименование материалов",
+    "наименование товаров работ услуг",
+    "товар",
+    "материал",
+    "товары работы услуги",
+}
 _QUANTITY_HEADERS = {
     "кол во",
     "количество",
     "количество объем",
     "объем",
+}
+_UNIT_HEADERS = {
+    "ед",
+    "ед изм",
+    "ед измер",
+    "единица",
+    "единица измерения",
 }
 _STRICT_NUMBER = r"[+-]?(?:\d{1,3}(?:\s\d{3})+|\d+)(?:[.,]\d+)?"
 _UNIT_SUFFIX = r"[A-Za-zА-Яа-яЁё%].*"
@@ -49,17 +67,13 @@ def _header_role(value: object) -> str | None:
     if not text:
         return None
 
-    if "наименован" in text or text in {"товар", "материал", "товары работы услуги"}:
+    if text in _ITEM_HEADERS:
         return "item"
 
     if text in _QUANTITY_HEADERS:
         return "quantity"
 
-    if "единица измерения" in text:
-        return "unit"
-    if text in {"ед", "ед изм", "ед измер", "единица"}:
-        return "unit"
-    if text.startswith("ед ") and "изм" in text:
+    if text in _UNIT_HEADERS:
         return "unit"
 
     return None
@@ -136,6 +150,13 @@ def _is_formula(cell) -> bool:
     )
 
 
+def _row_has_content(row) -> bool:
+    return any(
+        cell.value is not None and str(cell.value).strip()
+        for cell in row
+    )
+
+
 def extract_xlsx_lines(
     path: str | Path,
     *,
@@ -165,18 +186,38 @@ def extract_xlsx_lines(
 
             detected_table = True
             header_row, roles = header
+            terminal_total_seen = False
             for row_number, row in enumerate(
                 worksheet.iter_rows(min_row=header_row + 1),
                 start=header_row + 1,
             ):
+                if terminal_total_seen:
+                    if _row_has_content(row):
+                        raise XlsxLineExtractionError(
+                            f"content after total row at {worksheet.title}!{row_number}"
+                        )
+                    continue
+
                 item_cell = row[roles["item"] - 1]
+                if _is_formula(item_cell):
+                    raise XlsxLineExtractionError(
+                        f"formula item is unsupported at "
+                        f"{worksheet.title}!{get_column_letter(roles['item'])}{row_number}"
+                    )
+
                 item_name = "" if item_cell.value is None else str(item_cell.value).strip()
                 if not item_name:
+                    if _row_has_content(row):
+                        raise XlsxLineExtractionError(
+                            f"non-item content inside procurement table at "
+                            f"{worksheet.title}!{row_number}"
+                        )
                     continue
 
                 normalized_item = _normalize_text(item_name)
                 if normalized_item.startswith(_TOTAL_PREFIXES):
-                    break
+                    terminal_total_seen = True
+                    continue
 
                 quantity_cell = row[roles["quantity"] - 1]
                 if _is_formula(quantity_cell):
