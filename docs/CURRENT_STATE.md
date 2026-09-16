@@ -163,7 +163,7 @@ Remediation in the current branch:
 
 Public anonymized-real evaluation on the accepted fixture is reproducible in hosted CI and reports perfect metrics on the single public document.
 
-Bounded private control `PRIVATE_XLSX_CONTROL_2026-09-16_A` used 4 raw XLSX request documents / 28 human-adjudicated gold lines outside GitHub.
+Bounded private control `PRIVATE_CONTROL_0001` used 4 raw XLSX request documents / 28 human-adjudicated gold lines outside GitHub.
 
 Aggregate private result:
 
@@ -178,6 +178,19 @@ Aggregate private result:
 The measured gap is structural rather than semantic: one real template contains unit values in an adjacent column whose header is blank. The current baseline intentionally does not guess that column, so item/quantity extraction remains correct while four units stay unknown.
 
 This gap is **not fixed inside PR #4**. It is the next bounded Stage 1A extraction experiment after PR #4 acceptance.
+
+## PR #4 independent review #1 — FAIL
+
+Fresh independent review of exact head `8b241a9300af24f96badd1e427254e03d7b46b65` returned `FAIL` with one P2 finding: the aggregate-safe runner echoed any syntactically allowed free-form dataset label, so a private ASCII filename/company identifier could be logged verbatim.
+
+Remediation:
+
+- free-form `--dataset-label` is removed;
+- CLI now accepts only reviewed internal `--dataset-key` values;
+- output dataset ids come from a code-owned registry;
+- current private control key `private-0001` maps to opaque `PRIVATE_CONTROL_0001`;
+- unknown keys fail closed as `INVALID_DATASET_KEY` without echoing the supplied value;
+- regressions cover space/slash input, filename-shaped ASCII and company-shaped ASCII.
 
 ## Immediate next action
 
