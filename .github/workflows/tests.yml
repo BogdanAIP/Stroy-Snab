@@ -47,3 +47,6 @@ jobs:
 
       - name: Run Stage 1A public XLSX benchmark
         run: python scripts/benchmark_stage1a.py
+
+      - name: Run Stage 1A public extraction evaluation
+        run: python scripts/evaluate_stage1a.py

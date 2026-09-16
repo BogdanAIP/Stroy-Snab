@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "public_anonymized_real_stage1a_v1",
+  "documents": [
+    {
+      "document_id": "REQUEST_0001",
+      "document_role": "REQUEST",
+      "path": "data/fixtures/documents/anonymized-real/CASE_0001/REQUEST_0001/document.xlsx",
+      "lines": [
+        {
+          "item_name_raw": "Шпилька резьбовая М12х1000 ОЦ",
+          "unit_raw": "шт",
+          "quantity": "48",
+          "source_locator": "REQUEST!B3"
+        }
+      ]
+    }
+  ]
+}
