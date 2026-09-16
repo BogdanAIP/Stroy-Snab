@@ -56,22 +56,35 @@ def _header_role(value: object) -> str | None:
     return None
 
 
-def _as_decimal(value: object) -> Decimal | None:
+def _as_quantity(value: object) -> tuple[Decimal | None, str | None]:
     if value is None or isinstance(value, bool):
-        return None
+        return None, None
     if isinstance(value, Decimal):
-        return value
+        return value, None
     if isinstance(value, (int, float)):
-        return Decimal(str(value))
+        return Decimal(str(value)), None
 
     text = str(value).replace("\u00a0", " ").strip()
     if not text:
-        return None
-    text = re.sub(r"\s+", "", text).replace(",", ".")
+        return None, None
+
+    match = re.fullmatch(
+        r"([+-]?\d(?:[\d\s]*\d)?(?:[.,]\d+)?)\s*([^\d\s].*)?",
+        text,
+    )
+    if match is None:
+        return None, None
+
+    number_text = re.sub(r"\s+", "", match.group(1)).replace(",", ".")
     try:
-        return Decimal(text)
+        quantity = Decimal(number_text)
     except InvalidOperation:
-        return None
+        return None, None
+
+    unit_hint = match.group(2)
+    if unit_hint is not None:
+        unit_hint = unit_hint.strip() or None
+    return quantity, unit_hint
 
 
 def _find_header_columns(worksheet) -> tuple[int, dict[str, int]] | None:
@@ -132,11 +145,11 @@ def extract_xlsx_lines(
                     continue
 
                 quantity_cell = row[roles["quantity"] - 1]
-                quantity = _as_decimal(quantity_cell.value)
+                quantity, quantity_unit = _as_quantity(quantity_cell.value)
                 if quantity is None:
                     continue
 
-                unit_raw: str | None = None
+                unit_raw: str | None = quantity_unit
                 unit_column = roles.get("unit")
                 if unit_column is not None:
                     unit_cell = row[unit_column - 1]
