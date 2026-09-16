@@ -371,3 +371,68 @@ def test_supplier_name_table_is_not_a_procurement_table(tmp_path: Path) -> None:
             document_id="REQUEST_0016",
             document_role="REQUEST",
         )
+
+
+
+def test_uppercase_cyrillic_yo_quantity_header_is_supported(tmp_path: Path) -> None:
+    path = tmp_path / "uppercase_yo.xlsx"
+    _save(
+        path,
+        [
+            ["Наименование", "ОБЪЁМ"],
+            ["Смесь", 5],
+        ],
+    )
+
+    lines = extract_xlsx_lines(
+        path,
+        document_id="REQUEST_0017",
+        document_role="REQUEST",
+    )
+
+    assert len(lines) == 1
+    assert lines[0].quantity == Decimal("5")
+
+
+def test_item_starting_with_itogovyi_is_not_treated_as_total(tmp_path: Path) -> None:
+    path = tmp_path / "itogovyi_item.xlsx"
+    _save(
+        path,
+        [
+            ["Наименование", "Кол-во"],
+            ["Итоговый комплект крепежа", 2],
+            ["Итого", 2],
+        ],
+    )
+
+    lines = extract_xlsx_lines(
+        path,
+        document_id="REQUEST_0018",
+        document_role="REQUEST",
+    )
+
+    assert len(lines) == 1
+    assert lines[0].item_name_raw == "Итоговый комплект крепежа"
+    assert lines[0].quantity == Decimal("2")
+
+
+def test_error_diagnostics_do_not_expose_worksheet_title(tmp_path: Path) -> None:
+    path = tmp_path / "private_sheet.xlsx"
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = "PRIVATE_SUPPLIER_001"
+    worksheet.append(["Наименование", "Кол-во"])
+    worksheet.append(["Кабель", "не указано"])
+    workbook.save(path)
+    workbook.close()
+
+    with pytest.raises(XlsxLineExtractionError) as exc_info:
+        extract_xlsx_lines(
+            path,
+            document_id="PRIVATE_CONTROL_001",
+            document_role="REQUEST",
+        )
+
+    message = str(exc_info.value)
+    assert "PRIVATE_SUPPLIER_001" not in message
+    assert "SHEET_0001" in message
