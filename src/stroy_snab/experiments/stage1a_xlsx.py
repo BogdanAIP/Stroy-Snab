@@ -157,7 +157,13 @@ def _row_has_content(row) -> bool:
 
 
 def _is_total_label(text: str) -> bool:
-    return re.match(r"^(?:итого|всего)(?:$|[\\s:])", text) is not None
+    return (
+        text in {"итого", "всего"}
+        or text.startswith("итого ")
+        or text.startswith("всего ")
+        or text.startswith("итого:")
+        or text.startswith("всего:")
+    )
 
 
 def extract_xlsx_lines(
