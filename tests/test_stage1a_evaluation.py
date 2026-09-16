@@ -137,8 +137,8 @@ def test_runner_redacts_private_paths_on_failure(tmp_path: Path) -> None:
             "scripts/evaluate_stage1a.py",
             "--gold",
             str(missing_gold),
-            "--dataset-label",
-            "PRIVATE_CONTROL_A",
+            "--dataset-key",
+            "private-0001",
         ],
         cwd=root,
         check=False,
@@ -156,16 +156,25 @@ def test_runner_redacts_private_paths_on_failure(tmp_path: Path) -> None:
     assert str(missing_gold) not in combined
 
 
-def test_runner_rejects_unsafe_dataset_label_without_echoing_it() -> None:
+@pytest.mark.parametrize(
+    "unsafe_key",
+    [
+        "PRIVATE SUPPLIER / SECRET",
+        "PRIVATE_SUPPLIER_SECRET.xlsx",
+        "REAL_COMPANY_123",
+    ],
+)
+def test_runner_rejects_unreviewed_dataset_key_without_echoing_it(
+    unsafe_key: str,
+) -> None:
     root = Path(__file__).resolve().parents[1]
-    unsafe_label = "PRIVATE SUPPLIER / SECRET"
 
     completed = subprocess.run(
         [
             sys.executable,
             "scripts/evaluate_stage1a.py",
-            "--dataset-label",
-            unsafe_label,
+            "--dataset-key",
+            unsafe_key,
         ],
         cwd=root,
         check=False,
@@ -176,5 +185,33 @@ def test_runner_rejects_unsafe_dataset_label_without_echoing_it() -> None:
     assert completed.returncode == 2
     combined = completed.stdout + completed.stderr
     payload = json.loads(completed.stdout)
-    assert payload["dataset"] == "INVALID_DATASET_LABEL"
-    assert unsafe_label not in combined
+    assert payload["dataset"] == "INVALID_DATASET_KEY"
+    assert unsafe_key not in combined
+
+
+def test_private_dataset_key_emits_only_reviewed_opaque_id(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    private_name = "PRIVATE_SUPPLIER_SECRET.xlsx"
+    missing_gold = tmp_path / private_name
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/evaluate_stage1a.py",
+            "--gold",
+            str(missing_gold),
+            "--dataset-key",
+            "private-0001",
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    payload = json.loads(completed.stdout)
+    combined = completed.stdout + completed.stderr
+    assert payload["dataset"] == "PRIVATE_CONTROL_0001"
+    assert private_name not in combined
+    assert "PRIVATE_SUPPLIER_SECRET" not in combined
