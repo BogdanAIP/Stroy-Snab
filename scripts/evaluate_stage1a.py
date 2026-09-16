@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-import re
 
 from stroy_snab.evaluation.stage1a import evaluate_stage1a, load_gold_documents
 from stroy_snab.experiments.stage1a_xlsx import ProcurementLine, extract_xlsx_lines
@@ -11,7 +10,10 @@ from stroy_snab.experiments.stage1a_xlsx import ProcurementLine, extract_xlsx_li
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GOLD = ROOT / "data" / "gold" / "stage1a" / "public_anonymized_real.json"
-_SAFE_DATASET_LABEL = re.compile(r"^[A-Za-z0-9_.-]{1,80}$")
+_DATASET_IDS = {
+    "public": "public_anonymized_real",
+    "private-0001": "PRIVATE_CONTROL_0001",
+}
 
 
 def _resolve_document_path(root: Path, value: str) -> Path:
@@ -21,10 +23,10 @@ def _resolve_document_path(root: Path, value: str) -> Path:
     return root / path
 
 
-def _safe_error_payload(dataset_label: str) -> dict[str, object]:
+def _safe_error_payload(dataset_id: str) -> dict[str, object]:
     return {
         "experiment": "stage1a_xlsx_evaluation",
-        "dataset": dataset_label,
+        "dataset": dataset_id,
         "evaluation_status": "ERROR",
         "content_logged": False,
         "paths_logged": False,
@@ -36,16 +38,17 @@ def main() -> None:
     parser.add_argument("--gold", type=Path, default=DEFAULT_GOLD)
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument(
-        "--dataset-label",
-        default="public_anonymized_real",
-        help="Opaque/safe label printed in aggregate output.",
+        "--dataset-key",
+        default="public",
+        help="Internal reviewed dataset key. Raw labels are never echoed.",
     )
     args = parser.parse_args()
 
-    if _SAFE_DATASET_LABEL.fullmatch(args.dataset_label) is None:
+    dataset_id = _DATASET_IDS.get(args.dataset_key)
+    if dataset_id is None:
         print(
             json.dumps(
-                _safe_error_payload("INVALID_DATASET_LABEL"),
+                _safe_error_payload("INVALID_DATASET_KEY"),
                 ensure_ascii=False,
                 sort_keys=True,
             )
@@ -77,7 +80,7 @@ def main() -> None:
     except Exception:
         print(
             json.dumps(
-                _safe_error_payload(args.dataset_label),
+                _safe_error_payload(dataset_id),
                 ensure_ascii=False,
                 sort_keys=True,
             )
@@ -86,7 +89,7 @@ def main() -> None:
 
     payload = {
         "experiment": "stage1a_xlsx_evaluation",
-        "dataset": args.dataset_label,
+        "dataset": dataset_id,
         "evaluation_status": "PASS" if extraction_failures == 0 else "FAIL",
         **evaluation.as_metrics(),
         "content_logged": False,
