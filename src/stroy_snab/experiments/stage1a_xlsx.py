@@ -183,7 +183,8 @@ def extract_xlsx_lines(
     extracted: list[ProcurementLine] = []
     detected_table = False
     try:
-        for worksheet in workbook.worksheets:
+        for sheet_index, worksheet in enumerate(workbook.worksheets, start=1):
+            diagnostic_sheet = f"SHEET_{sheet_index:04d}"
             header = _find_header_columns(worksheet)
             if header is None:
                 continue
@@ -198,7 +199,7 @@ def extract_xlsx_lines(
                 if terminal_total_seen:
                     if _row_has_content(row):
                         raise XlsxLineExtractionError(
-                            f"content after total row at {worksheet.title}!{row_number}"
+                            f"content after total row at {diagnostic_sheet}!{row_number}"
                         )
                     continue
 
@@ -206,7 +207,7 @@ def extract_xlsx_lines(
                 if _is_formula(item_cell):
                     raise XlsxLineExtractionError(
                         f"formula item is unsupported at "
-                        f"{worksheet.title}!{get_column_letter(roles['item'])}{row_number}"
+                        f"{diagnostic_sheet}!{get_column_letter(roles['item'])}{row_number}"
                     )
 
                 item_name = "" if item_cell.value is None else str(item_cell.value).strip()
@@ -214,7 +215,7 @@ def extract_xlsx_lines(
                     if _row_has_content(row):
                         raise XlsxLineExtractionError(
                             f"non-item content inside procurement table at "
-                            f"{worksheet.title}!{row_number}"
+                            f"{diagnostic_sheet}!{row_number}"
                         )
                     continue
 
@@ -227,14 +228,14 @@ def extract_xlsx_lines(
                 if _is_formula(quantity_cell):
                     raise XlsxLineExtractionError(
                         f"formula quantity is unsupported at "
-                        f"{worksheet.title}!{get_column_letter(roles['quantity'])}{row_number}"
+                        f"{diagnostic_sheet}!{get_column_letter(roles['quantity'])}{row_number}"
                     )
 
                 quantity, quantity_unit = _as_quantity(quantity_cell.value)
                 if quantity is None:
                     raise XlsxLineExtractionError(
                         f"unparseable quantity at "
-                        f"{worksheet.title}!{get_column_letter(roles['quantity'])}{row_number}"
+                        f"{diagnostic_sheet}!{get_column_letter(roles['quantity'])}{row_number}"
                     )
 
                 unit_raw: str | None = quantity_unit
@@ -244,7 +245,7 @@ def extract_xlsx_lines(
                     if _is_formula(unit_cell):
                         raise XlsxLineExtractionError(
                             f"formula unit is unsupported at "
-                            f"{worksheet.title}!{get_column_letter(unit_column)}{row_number}"
+                            f"{diagnostic_sheet}!{get_column_letter(unit_column)}{row_number}"
                         )
                     if unit_cell.value is not None:
                         value = str(unit_cell.value).strip()
