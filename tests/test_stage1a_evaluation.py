@@ -123,3 +123,58 @@ def test_public_runner_outputs_only_aggregate_metrics() -> None:
     assert "Шпилька" not in completed.stdout
     assert "REQUEST!B3" not in completed.stdout
     assert "document.xlsx" not in completed.stdout
+
+
+
+def test_runner_redacts_private_paths_on_failure(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    private_name = "PRIVATE_SUPPLIER_SECRET.xlsx"
+    missing_gold = tmp_path / private_name
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/evaluate_stage1a.py",
+            "--gold",
+            str(missing_gold),
+            "--dataset-label",
+            "PRIVATE_CONTROL_A",
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    combined = completed.stdout + completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["evaluation_status"] == "ERROR"
+    assert payload["content_logged"] is False
+    assert payload["paths_logged"] is False
+    assert private_name not in combined
+    assert str(missing_gold) not in combined
+
+
+def test_runner_rejects_unsafe_dataset_label_without_echoing_it() -> None:
+    root = Path(__file__).resolve().parents[1]
+    unsafe_label = "PRIVATE SUPPLIER / SECRET"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/evaluate_stage1a.py",
+            "--dataset-label",
+            unsafe_label,
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    combined = completed.stdout + completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["dataset"] == "INVALID_DATASET_LABEL"
+    assert unsafe_label not in combined
