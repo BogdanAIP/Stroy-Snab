@@ -142,14 +142,67 @@ Remediation completed on the development branch:
 
 The first clean-history remediation head `06ec361133d3499f93fc74bdb63dbaccab6e7f74` passed hosted workflow `34510372197` across Linux 3.11, Linux 3.13 and Windows 3.13. Each matrix reported **40 tests passed**. Windows benchmark: approximately **0.534 s / 110.2 MB / 0.6 MB**; Linux 3.13: approximately **0.538 s / 110.6 MB / 0.6 MB**. Subsequent API/document hardening moves HEAD and therefore still requires final exact-head CI and a fresh independent review.
 
-## Stage 1P — evidence still required before acceptance
+## Stage 1P — accepted
 
-- obtain **SUCCESS** hosted CI on the final candidate HEAD after this final canonical synchronization;
-- freeze exact BASE/HEAD without further repository changes;
-- obtain fresh independent exact-head semantic review using accepted BASE code-review skill v1.0;
-- if review causes any material code/doc fix, repeat exact-head CI and review on the new HEAD.
+Terminal acceptance:
 
-A future smoke-run on the user's exact Windows 11 machine is useful confirmation of the product target but is not represented as already completed evidence and is not required to establish that the current mandatory stack has a large 16 GB resource margin.
+- accepted BASE: `44610bd33eff346f21414fc5b4513195682cbb76`;
+- reviewed Stage 1P HEAD: `a6360a18c15efb4db84b3bedf8b1bfae4cbc4ee2`;
+- independent exact-head semantic review: `PASS`, surviving findings `0`, accepted code-review skill v1.0;
+- final hosted workflow referenced by PR #2: run `34814297721`, Linux 3.11/3.13 and Windows 3.13 all SUCCESS with 43 tests per matrix;
+- merge commit on `main`: `15df096e5f8aacca56ed78c04f7b470d6a61fea6` on 2026-09-14.
+
+Stage 1P is no longer an open gate. Stage 1A may proceed under a new research decision.
+
+## Stage 1A — research
+
+Research brief: `docs/research/STAGE1A_DOCUMENT_EXTRACTION_RESEARCH.md`.
+
+Decision: `NARROW`.
+
+Authorized first experiment:
+
+- deterministic native XLSX extraction using openpyxl;
+- canonical fields: document id/role, raw item name, raw unit, quantity, source locator;
+- synthetic regression tests plus accepted public anonymized-real fixture;
+- Docling and PaddleOCR/PP-StructureV3 remain deferred candidates for a separate PDF/image experiment;
+- no supplier discovery, matching/equivalence, raw-corpus publication or consequence-bearing integration.
+
+## Stage 1A — provisional XLSX experiment evidence
+
+PR #3 BASE: `15df096e5f8aacca56ed78c04f7b470d6a61fea6`.
+
+Implementation head before evidence-only document synchronization:
+
+`96f9690eb37196ad414f002d90f98dab534415a4`.
+
+Hosted workflow run `35101156575` / run #74: **SUCCESS**.
+
+Matrix results:
+
+- Ubuntu / Python 3.11: **49 tests passed**; public Stage 1A benchmark: 1 XLSX document, 1 extracted line, ~3.273 ms;
+- Ubuntu / Python 3.13: tests + Stage 1A benchmark SUCCESS;
+- Windows / Python 3.13.15: **49 tests passed**; public Stage 1A benchmark: 1 XLSX document, 1 extracted line, ~4.942 ms.
+
+Benchmark safety:
+
+- dataset: accepted public `anonymized-real` corpus;
+- current public sample: `CASE_0001 / REQUEST_0001`;
+- benchmark logs record only aggregate document/line counts and runtime;
+- `content_logged=false`;
+- no raw Drive/Library/ZIP document is a CI dependency.
+
+Observed real-fixture failure/remediation:
+
+- initial implementation detected the public table but extracted zero lines because `CASE_0001` stores quantity and unit together in one quantity cell (for example the public fixture shape is numeric quantity + unit token);
+- the baseline was narrowed to parse a leading numeric quantity plus optional unit suffix;
+- a deterministic regression was added for the same structural shape;
+- separate unit columns still override the suffix when present;
+- the corrected implementation passed the public fixture on Linux and Windows.
+
+This is provisional Stage 1A experiment evidence, not a final extraction-accuracy claim. Human gold labels and corpus-level precision/recall are still required.
+
+Because updating this evidence file moves HEAD, the final candidate HEAD after evidence synchronization must pass hosted CI again before independent review.
 
 ## Future research inputs
 
