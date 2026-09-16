@@ -289,3 +289,85 @@ def test_fails_closed_when_header_exists_but_no_numeric_quantity(tmp_path: Path)
             document_id="REQUEST_0012",
             document_role="REQUEST",
         )
+
+
+
+def test_rejects_multirow_merged_quantity_header(tmp_path: Path) -> None:
+    path = tmp_path / "multirow_header.xlsx"
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Заявка"
+    worksheet["A1"] = "Наименование"
+    worksheet["B1"] = "Количество"
+    worksheet["B2"] = "мест"
+    worksheet["C2"] = "единиц"
+    worksheet["A3"] = "Кабель"
+    worksheet["B3"] = 3
+    worksheet["C3"] = 300
+    worksheet.merge_cells("A1:A2")
+    worksheet.merge_cells("B1:C1")
+    workbook.save(path)
+    workbook.close()
+
+    with pytest.raises(XlsxLineExtractionError, match="non-item content inside procurement table"):
+        extract_xlsx_lines(
+            path,
+            document_id="REQUEST_0013",
+            document_role="REQUEST",
+        )
+
+
+def test_subtotal_followed_by_content_fails_closed(tmp_path: Path) -> None:
+    path = tmp_path / "subtotal.xlsx"
+    _save(
+        path,
+        [
+            ["Наименование", "Кол-во"],
+            ["Кабель", 10],
+            ["Итого по разделу", 10],
+            ["Провод", 20],
+        ],
+    )
+
+    with pytest.raises(XlsxLineExtractionError, match="content after total row"):
+        extract_xlsx_lines(
+            path,
+            document_id="REQUEST_0014",
+            document_role="REQUEST",
+        )
+
+
+def test_formula_item_fails_closed(tmp_path: Path) -> None:
+    path = tmp_path / "formula_item.xlsx"
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Заявка"
+    worksheet.append(["Наименование", "Кол-во"])
+    worksheet.append(['=CONCAT("Каб","ель")', 10])
+    workbook.save(path)
+    workbook.close()
+
+    with pytest.raises(XlsxLineExtractionError, match="formula item is unsupported"):
+        extract_xlsx_lines(
+            path,
+            document_id="REQUEST_0015",
+            document_role="REQUEST",
+        )
+
+
+def test_supplier_name_table_is_not_a_procurement_table(tmp_path: Path) -> None:
+    path = tmp_path / "supplier_table.xlsx"
+    _save(
+        path,
+        [
+            ["Наименование поставщика", "Количество"],
+            ["ООО Альфа", 3],
+        ],
+    )
+
+    with pytest.raises(XlsxLineExtractionError, match="no supported procurement table"):
+        extract_xlsx_lines(
+            path,
+            document_id="REQUEST_0016",
+            document_role="REQUEST",
+        )
