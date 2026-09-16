@@ -9,7 +9,7 @@ import openpyxl
 
 
 class XlsxLineExtractionError(RuntimeError):
-    """Raised when the Stage 1A XLSX baseline cannot find a supported line table."""
+    """Raised when the Stage 1A XLSX baseline cannot safely extract a supported table."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +24,14 @@ class ProcurementLine:
 
 _HEADER_SCAN_LIMIT = 60
 _TOTAL_PREFIXES = ("итого", "всего")
+_QUANTITY_HEADERS = {
+    "кол во",
+    "количество",
+    "количество объем",
+    "объем",
+}
+_STRICT_NUMBER = r"[+-]?(?:\d{1,3}(?:\s\d{3})+|\d+)(?:[.,]\d+)?"
+_UNIT_SUFFIX = r"[A-Za-zА-Яа-яЁё%].*"
 
 
 def _normalize_text(value: object) -> str:
@@ -43,7 +51,7 @@ def _header_role(value: object) -> str | None:
     if "наименован" in text or text in {"товар", "материал", "товары работы услуги"}:
         return "item"
 
-    if "колич" in text or text in {"кол во", "объем", "объём"}:
+    if text in _QUANTITY_HEADERS:
         return "quantity"
 
     if "единица измерения" in text:
@@ -69,7 +77,7 @@ def _as_quantity(value: object) -> tuple[Decimal | None, str | None]:
         return None, None
 
     match = re.fullmatch(
-        r"([+-]?\d(?:[\d\s]*\d)?(?:[.,]\d+)?)\s*([^\d\s].*)?",
+        rf"({_STRICT_NUMBER})(?:\s+({_UNIT_SUFFIX}))?",
         text,
     )
     if match is None:
@@ -93,16 +101,38 @@ def _find_header_columns(worksheet) -> tuple[int, dict[str, int]] | None:
         worksheet.iter_rows(min_row=1, max_row=max_row),
         start=1,
     ):
-        roles: dict[str, int] = {}
+        candidates: dict[str, list[int]] = {}
         for column_index, cell in enumerate(row, start=1):
             role = _header_role(cell.value)
-            if role is not None and role not in roles:
-                roles[role] = column_index
+            if role is not None:
+                candidates.setdefault(role, []).append(column_index)
 
-        if "item" in roles and "quantity" in roles:
-            return row_index, roles
+        if "item" not in candidates or "quantity" not in candidates:
+            continue
+
+        ambiguous = {
+            role: columns
+            for role, columns in candidates.items()
+            if len(columns) > 1
+        }
+        if ambiguous:
+            roles = ", ".join(sorted(ambiguous))
+            raise XlsxLineExtractionError(
+                f"ambiguous procurement table header roles: {roles}"
+            )
+
+        return row_index, {
+            role: columns[0]
+            for role, columns in candidates.items()
+        }
 
     return None
+
+
+def _is_formula(cell) -> bool:
+    return cell.data_type == "f" or (
+        isinstance(cell.value, str) and cell.value.startswith("=")
+    )
 
 
 def extract_xlsx_lines(
@@ -115,13 +145,13 @@ def extract_xlsx_lines(
 
     This is a Stage 1A experiment, not a general spreadsheet parser. It looks for
     a table with item-name and quantity headers, optionally a unit header, and
-    fails closed when no supported table can be found.
+    fails closed when a candidate row cannot be interpreted safely.
     """
 
     workbook = openpyxl.load_workbook(
         filename=Path(path),
         read_only=True,
-        data_only=True,
+        data_only=False,
     )
 
     extracted: list[ProcurementLine] = []
@@ -142,20 +172,35 @@ def extract_xlsx_lines(
 
                 normalized_item = _normalize_text(item_name)
                 if normalized_item.startswith(_TOTAL_PREFIXES):
-                    continue
+                    break
 
                 quantity_cell = row[roles["quantity"] - 1]
+                if _is_formula(quantity_cell):
+                    raise XlsxLineExtractionError(
+                        f"formula quantity is unsupported at "
+                        f"{worksheet.title}!{quantity_cell.coordinate}"
+                    )
+
                 quantity, quantity_unit = _as_quantity(quantity_cell.value)
                 if quantity is None:
-                    continue
+                    raise XlsxLineExtractionError(
+                        f"unparseable quantity at "
+                        f"{worksheet.title}!{quantity_cell.coordinate}"
+                    )
 
                 unit_raw: str | None = quantity_unit
                 unit_column = roles.get("unit")
                 if unit_column is not None:
                     unit_cell = row[unit_column - 1]
+                    if _is_formula(unit_cell):
+                        raise XlsxLineExtractionError(
+                            f"formula unit is unsupported at "
+                            f"{worksheet.title}!{unit_cell.coordinate}"
+                        )
                     if unit_cell.value is not None:
                         value = str(unit_cell.value).strip()
-                        unit_raw = value or None
+                        if value:
+                            unit_raw = value
 
                 extracted.append(
                     ProcurementLine(
