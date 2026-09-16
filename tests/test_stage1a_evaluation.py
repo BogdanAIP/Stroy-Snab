@@ -6,7 +6,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+import openpyxl
 import pytest
+from openpyxl.workbook.defined_name import DefinedName
 
 from stroy_snab.evaluation.stage1a import GoldDocument, evaluate_stage1a
 from stroy_snab.experiments.stage1a_xlsx import ProcurementLine
@@ -215,3 +217,105 @@ def test_private_dataset_key_emits_only_reviewed_opaque_id(tmp_path: Path) -> No
     assert payload["dataset"] == "PRIVATE_CONTROL_0001"
     assert private_name not in combined
     assert "PRIVATE_SUPPLIER_SECRET" not in combined
+
+
+
+def test_removed_dataset_label_interface_does_not_echo_private_value() -> None:
+    root = Path(__file__).resolve().parents[1]
+    private_value = "PRIVATE_SUPPLIER_SECRET.xlsx"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/evaluate_stage1a.py",
+            "--dataset-label",
+            private_value,
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    combined = completed.stdout + completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["dataset"] == "INVALID_ARGUMENTS"
+    assert private_value not in combined
+    assert "--dataset-label" not in combined
+
+
+def test_openpyxl_warning_cannot_leak_private_workbook_text(
+    tmp_path: Path,
+) -> None:
+    root = Path(__file__).resolve().parents[1]
+    private_title = "PRIVATE SUPPLIER SECRET"
+    workbook_path = tmp_path / "private-warning.xlsx"
+
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = private_title
+    worksheet.append(["Наименование", "Кол-во"])
+    worksheet.append(["Кабель", 10])
+    workbook.defined_names.add(
+        DefinedName(
+            "_xlnm.Print_Area",
+            localSheetId=0,
+            attr_text=f"'{private_title}'!INVALID",
+        )
+    )
+    workbook.save(workbook_path)
+    workbook.close()
+
+    gold_path = tmp_path / "gold.json"
+    gold_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "documents": [
+                    {
+                        "document_id": "REQUEST_9999",
+                        "document_role": "REQUEST",
+                        "path": workbook_path.name,
+                        "lines": [
+                            {
+                                "item_name_raw": "Кабель",
+                                "unit_raw": None,
+                                "quantity": "10",
+                                "source_locator": f"{private_title}!A2",
+                            }
+                        ],
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/evaluate_stage1a.py",
+            "--gold",
+            str(gold_path),
+            "--root",
+            str(tmp_path),
+            "--dataset-key",
+            "private-0001",
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    combined = completed.stdout + completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["dataset"] == "PRIVATE_CONTROL_0001"
+    assert payload["evaluation_status"] == "FAIL"
+    assert payload["extraction_failures"] == 1
+    assert private_title not in combined
+    assert "Print area cannot be set" not in combined
+    assert completed.stderr == ""
