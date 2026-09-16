@@ -11,7 +11,7 @@
 - active work: draft PR #3, branch `stage1a/document-extraction-baseline`;
 - current roadmap stage: **Stage 1A — Document extraction**.
 
-The previous version of this file was stale after PR #2 merge and still described Stage 1P as unaccepted. Live GitHub state is authoritative.
+Live GitHub state is authoritative for the current PR HEAD, CI and review status. This file intentionally does not claim that the current HEAD has passed CI; exact-head acceptance state must be resolved live before review/merge.
 
 ## Accepted Stage 1P baseline
 
@@ -64,7 +64,7 @@ Implemented on the candidate branch:
 
 1. Stage 1A research brief;
 2. experimental `stroy_snab.experiments.stage1a_xlsx` extractor;
-3. fail-closed unsupported-layout behavior;
+3. fail-closed unsupported/ambiguous-layout behavior;
 4. cell-based source locators;
 5. synthetic XLSX regression tests;
 6. `scripts/benchmark_stage1a.py` against accepted public anonymized-real fixtures;
@@ -81,29 +81,51 @@ The expanded Google Drive `Stroy-Snab` corpus is the preferred read-only raw sou
 
 Private evaluation may publish only aggregate metrics and opaque dataset ids. No raw filenames, identities, requisites, cell values or reverse mappings may enter repository evidence.
 
-## Current PR #3 evidence state
+## Prior provisional XLSX evidence
 
 Implementation head `96f9690eb37196ad414f002d90f98dab534415a4` passed hosted workflow run `35101156575` / run #74:
 
 - Ubuntu Python 3.11: 49 tests PASS; public XLSX benchmark 1 document -> 1 line, ~3.273 ms;
 - Ubuntu Python 3.13: tests and benchmark PASS;
 - Windows Python 3.13.15: 49 tests PASS; public XLSX benchmark 1 document -> 1 line, ~4.942 ms;
-- benchmark logs contain aggregate counts/runtime only and report `content_logged=false`.
+- benchmark logs contained aggregate counts/runtime only and reported `content_logged=false`.
 
-The first public-fixture attempt exposed a concrete corpus shape: quantity and unit may share one cell. The extractor now parses a leading numeric quantity with an optional unit suffix and has a regression for that structure.
+This is historical provisional experiment evidence only. It does not certify the current PR HEAD.
 
-Provisional evidence is recorded in `docs/EVIDENCE_INDEX.md`.
+## Independent review #1 — FAIL and remediation
 
-Because canonical evidence synchronization moves HEAD, **the final candidate HEAD still requires a fresh hosted CI run** before review.
+Fresh independent review of exact head
+
+`370be6763465b608dc032a97580905e31ea8d545`
+
+returned `FAIL` with 5 surviving findings:
+
+- P1: permissive quantity parsing could convert ambiguous values such as dates/dimensions/punctuated numbers into a successful quantity + garbage unit;
+- P1: first-match header selection could choose `Количество мест` instead of the true line quantity;
+- P2: a whitespace-only explicit unit cell could erase a unit recovered from the quantity cell;
+- P2: formula quantities with no cached value could silently drop rows and produce a partial successful extraction;
+- P3: canonical evidence text was stale relative to the exact final CI state.
+
+Remediation in the current branch:
+
+- quantity strings now use a strict numeric grammar and optional unit suffix only after a whitespace boundary; ambiguous forms fail closed;
+- quantity header recognition uses a bounded exact allowlist, so `Количество мест` is not a line-quantity header;
+- multiple supported candidates for the same header role fail closed as ambiguous;
+- an explicit unit overrides the quantity suffix only when non-empty;
+- quantity/unit formulas fail closed;
+- any candidate item row with a missing or unparseable quantity fails closed instead of being silently skipped;
+- regression tests cover the reviewed failure mechanisms;
+- canonical docs no longer make a time-sensitive claim that the current HEAD has already passed exact-head CI.
 
 ## Immediate next action
 
-1. obtain SUCCESS hosted CI on the final evidence-synchronized HEAD;
-2. freeze exact `BASE_SHA / HEAD_SHA`;
-3. do not move HEAD after freeze;
-4. run a fresh independent read-only semantic review of PR #3 using accepted `.agents/skills/code-review/SKILL.md` v1.0;
-5. only a PASS on the exact frozen HEAD permits merge;
-6. any material fix requires new CI and review.
+1. resolve the live PR #3 HEAD after remediation;
+2. obtain SUCCESS hosted CI on that exact HEAD across the required Linux/Windows matrix;
+3. freeze exact `BASE_SHA / HEAD_SHA`;
+4. do not move HEAD after freeze;
+5. run a fresh independent read-only semantic review of the new exact HEAD using accepted `.agents/skills/code-review/SKILL.md` v1.0;
+6. only a PASS on the exact frozen HEAD permits merge;
+7. any material fix requires new CI and another review.
 
 ## Stage 1A work still not completed by PR #3
 
