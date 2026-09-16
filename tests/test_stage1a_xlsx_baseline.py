@@ -436,3 +436,138 @@ def test_error_diagnostics_do_not_expose_worksheet_title(tmp_path: Path) -> None
     message = str(exc_info.value)
     assert "PRIVATE_SUPPLIER_001" not in message
     assert "SHEET_0001" in message
+
+
+
+def test_infers_adjacent_blank_header_unit_column_when_all_rows_agree(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "unlabeled_units.xlsx"
+    _save(
+        path,
+        [
+            ["Наименование", "Кол-во", None],
+            ["Шпилька", 20, "м"],
+            ["Гайка", 200, "шт"],
+            ["Шайба", 100, "шт"],
+            ["Анкер", 5, "шт"],
+        ],
+    )
+
+    lines = extract_xlsx_lines(
+        path,
+        document_id="REQUEST_0019",
+        document_role="REQUEST",
+    )
+
+    assert [line.unit_raw for line in lines] == ["м", "шт", "шт", "шт"]
+
+
+def test_does_not_infer_unlabeled_unit_column_from_single_row(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "single_row_unlabeled.xlsx"
+    _save(
+        path,
+        [
+            ["Наименование", "Кол-во", None],
+            ["Кабель", 10, "м"],
+        ],
+    )
+
+    lines = extract_xlsx_lines(
+        path,
+        document_id="REQUEST_0020",
+        document_role="REQUEST",
+    )
+
+    assert lines[0].unit_raw is None
+
+
+def test_does_not_infer_unlabeled_adjacent_comment_column(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "unlabeled_comment.xlsx"
+    _save(
+        path,
+        [
+            ["Наименование", "Кол-во", None],
+            ["Кабель", 10, "срочно"],
+            ["Провод", 20, "объект 2"],
+        ],
+    )
+
+    lines = extract_xlsx_lines(
+        path,
+        document_id="REQUEST_0021",
+        document_role="REQUEST",
+    )
+
+    assert [line.unit_raw for line in lines] == [None, None]
+
+
+def test_mixed_unlabeled_adjacent_values_block_unit_inference(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "mixed_unlabeled.xlsx"
+    _save(
+        path,
+        [
+            ["Наименование", "Кол-во", None],
+            ["Кабель", 10, "м"],
+            ["Провод", 20, "срочно"],
+            ["Крепеж", 30, "шт"],
+        ],
+    )
+
+    lines = extract_xlsx_lines(
+        path,
+        document_id="REQUEST_0022",
+        document_role="REQUEST",
+    )
+
+    assert [line.unit_raw for line in lines] == [None, None, None]
+
+
+def test_quantity_suffix_blocks_unlabeled_adjacent_unit_inference(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "suffix_vs_unlabeled.xlsx"
+    _save(
+        path,
+        [
+            ["Наименование", "Кол-во", None],
+            ["Кабель", "10 м", "шт"],
+            ["Провод", "20 м", "шт"],
+        ],
+    )
+
+    lines = extract_xlsx_lines(
+        path,
+        document_id="REQUEST_0023",
+        document_role="REQUEST",
+    )
+
+    assert [line.unit_raw for line in lines] == ["м", "м"]
+
+
+def test_only_immediately_adjacent_blank_column_can_be_inferred(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "non_adjacent_unit.xlsx"
+    _save(
+        path,
+        [
+            ["Наименование", "Кол-во", None, None],
+            ["Кабель", 10, None, "м"],
+            ["Провод", 20, None, "м"],
+        ],
+    )
+
+    lines = extract_xlsx_lines(
+        path,
+        document_id="REQUEST_0024",
+        document_role="REQUEST",
+    )
+
+    assert [line.unit_raw for line in lines] == [None, None]
