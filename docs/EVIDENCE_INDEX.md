@@ -246,6 +246,76 @@ Accepted remediation targets from review #2:
 
 Current branch remediation implements these targets with deterministic regression tests. No terminal acceptance is recorded here yet; exact current HEAD, hosted CI and a new independent review must be resolved live.
 
+## Stage 1A — XLSX evaluation harness (PR #4 provisional)
+
+PR #4 BASE:
+
+`ea67a647d31bf3e8238136f62d1c550aa1a26e76`
+
+Implementation/evidence-sync pre-head:
+
+`7a44edae80c4ba706572b314ece77fdc69c54bc1`
+
+Hosted workflow run `35125653461` / run #95: **SUCCESS**.
+
+Required matrices:
+
+- Ubuntu / Python 3.11: **73 tests passed**;
+- Ubuntu / Python 3.13: **73 tests passed**;
+- Windows / Python 3.13: **73 tests passed**.
+
+Public anonymized-real evaluation:
+
+- dataset label: `public_anonymized_real`;
+- documents: 1;
+- gold lines: 1;
+- extraction failures: 0;
+- line detection precision: **1.00**;
+- line detection recall: **1.00**;
+- item exact/normalized accuracy: **1.00 / 1.00**;
+- unit exact/normalized accuracy: **1.00 / 1.00**;
+- quantity exact accuracy: **1.00**;
+- role exact accuracy: **1.00**;
+- strict line accuracy: **1.00**;
+- document-perfect rate: **1.00**;
+- runner reports `content_logged=false` and `paths_logged=false`.
+
+This one-document public result proves only that the accepted public fixture is measured reproducibly; it is not corpus-level accuracy evidence.
+
+### Bounded private XLSX control
+
+Opaque private dataset id:
+
+`PRIVATE_XLSX_CONTROL_2026-09-16_A`
+
+Private control was performed outside GitHub on 4 raw XLSX request documents with human-adjudicated gold. No raw filenames, source identities, line values, paths or reverse mapping are stored in the repository.
+
+Aggregate result:
+
+- documents: **4**;
+- gold lines: **28**;
+- predicted lines: **28**;
+- extraction failures: **0**;
+- line detection precision: **1.00**;
+- line detection recall: **1.00**;
+- item exact accuracy: **1.00**;
+- quantity exact accuracy: **1.00**;
+- role exact accuracy: **1.00**;
+- unit exact accuracy: **0.8571** (24/28);
+- strict line accuracy: **0.8571** (24/28);
+- document-perfect rate: **0.75** (3/4).
+
+Observed structural failure class:
+
+- one real XLSX template contains valid unit values in an adjacent column whose header is blank;
+- the accepted baseline correctly avoids guessing an unlabeled column, so all lines/names/quantities are recovered but 4 unit values remain unknown.
+
+Decision from this control:
+
+- keep PR #4 limited to evaluation infrastructure;
+- treat unlabeled-unit-column handling as the next measured Stage 1A extraction gap;
+- any remediation must preserve fail-closed behavior and add an explicit structural rule plus regression/private re-evaluation rather than heuristic guessing.
+
 ## Future research inputs
 
 The following must be independently rechecked before adoption in their stages:
