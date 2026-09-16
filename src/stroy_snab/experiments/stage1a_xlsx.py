@@ -189,7 +189,7 @@ def extract_xlsx_lines(
                 if quantity is None:
                     raise XlsxLineExtractionError(
                         f"unparseable quantity at "
-                        f"{worksheet.title}!{quantity_cell.coordinate}"
+                        f"{worksheet.title}!{get_column_letter(roles['quantity'])}{row_number}"
                     )
 
                 unit_raw: str | None = quantity_unit
