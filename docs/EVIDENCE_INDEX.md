@@ -286,7 +286,7 @@ This one-document public result proves only that the accepted public fixture is 
 
 Opaque private dataset id:
 
-`PRIVATE_XLSX_CONTROL_2026-09-16_A`
+`PRIVATE_CONTROL_0001`
 
 Private control was performed outside GitHub on 4 raw XLSX request documents with human-adjudicated gold. No raw filenames, source identities, line values, paths or reverse mapping are stored in the repository.
 
@@ -315,6 +315,20 @@ Decision from this control:
 - keep PR #4 limited to evaluation infrastructure;
 - treat unlabeled-unit-column handling as the next measured Stage 1A extraction gap;
 - any remediation must preserve fail-closed behavior and add an explicit structural rule plus regression/private re-evaluation rather than heuristic guessing.
+
+## Stage 1A — PR #4 independent review #1
+
+Reviewed exact identity:
+
+- BASE: `ea67a647d31bf3e8238136f62d1c550aa1a26e76`;
+- reviewed HEAD: `8b241a9300af24f96badd1e427254e03d7b46b65`;
+- review skill: `code-review` v1.0;
+- terminal result: **FAIL**;
+- surviving findings: **1**.
+
+Finding: the first private-control runner accepted and echoed free-form ASCII dataset labels, allowing a filename/company-shaped value to appear in aggregate output despite `content_logged=false` / `paths_logged=false`.
+
+Remediation on the active branch replaces free-form output labels with a reviewed code-owned dataset-key registry. The current private control is represented by `PRIVATE_CONTROL_0001`; arbitrary labels are never echoed.
 
 ## Future research inputs
 
