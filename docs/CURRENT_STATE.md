@@ -117,6 +117,28 @@ Remediation in the current branch:
 - regression tests cover the reviewed failure mechanisms;
 - canonical docs no longer make a time-sensitive claim that the current HEAD has already passed exact-head CI.
 
+## Independent review #2 — FAIL and remediation
+
+Fresh independent review of exact head
+
+`13dfee3f5b15a98b985f90d422d651e75f27fed5`
+
+returned `FAIL` with 4 surviving findings:
+
+- P1: a merged/multi-row header could still use parent `Количество` as the final quantity column and extract package/place count instead of the actual item quantity;
+- P2: any `Итого/Всего` row unconditionally ended worksheet parsing, allowing silent truncation after a subtotal or first table;
+- P2: formula item cells were returned as literal Excel expressions because formula guards existed only for quantity/unit;
+- P2: broad item-header matching accepted unrelated tables such as `Наименование поставщика | Количество`.
+
+Remediation in the current branch:
+
+- item headers now use a bounded exact allowlist rather than substring matching;
+- unit headers are also bounded to explicit supported labels;
+- a non-empty row with an empty item cell inside a detected procurement table fails closed, which rejects merged/multi-row header continuations instead of guessing a data column;
+- a total marker is treated as terminal only if no later non-empty content appears; later content fails closed rather than producing a partial successful extraction;
+- formula item cells fail closed before item-name conversion;
+- regression tests cover the merged multi-row header, subtotal followed by more content, formula item and supplier-name-table cases.
+
 ## Immediate next action
 
 1. resolve the live PR #3 HEAD after remediation;
