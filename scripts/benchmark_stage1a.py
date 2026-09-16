@@ -4,9 +4,7 @@ import json
 from pathlib import Path
 from time import perf_counter
 
-from stroy_snab.experiments.stage1a_xlsx import XlsxLineExtractionError, extract_xlsx_lines
-
-import openpyxl
+from stroy_snab.experiments.stage1a_xlsx import extract_xlsx_lines
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,33 +34,11 @@ def main() -> None:
                 if relative_name.lower().endswith(".xlsx")
             ]
             for path in xlsx_files:
-                try:
-                    lines = extract_xlsx_lines(
-                        path,
-                        document_id=document["document_id"],
-                        document_role=document["role"],
-                    )
-                except XlsxLineExtractionError:
-                    workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
-                    try:
-                        for worksheet in workbook.worksheets:
-                            for row_number, row in enumerate(worksheet.iter_rows(values_only=True), start=1):
-                                if row_number > 20:
-                                    break
-                                print(
-                                    json.dumps(
-                                        {
-                                            "diagnostic": "public_fixture_row",
-                                            "sheet": worksheet.title,
-                                            "row": row_number,
-                                            "values": list(row),
-                                        },
-                                        ensure_ascii=False,
-                                    )
-                                )
-                    finally:
-                        workbook.close()
-                    raise
+                lines = extract_xlsx_lines(
+                    path,
+                    document_id=document["document_id"],
+                    document_role=document["role"],
+                )
                 document_count += 1
                 line_count += len(lines)
 
