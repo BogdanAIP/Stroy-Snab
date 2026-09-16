@@ -24,7 +24,6 @@ class ProcurementLine:
 
 
 _HEADER_SCAN_LIMIT = 60
-_TOTAL_PREFIXES = ("итого", "всего")
 _ITEM_HEADERS = {
     "наименование",
     "наименование товара",
