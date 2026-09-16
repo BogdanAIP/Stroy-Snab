@@ -50,6 +50,8 @@ _UNIT_HEADERS = {
 }
 _STRICT_NUMBER = r"[+-]?(?:\d{1,3}(?:\s\d{3})+|\d+)(?:[.,]\d+)?"
 _UNIT_SUFFIX = r"[A-Za-zА-Яа-яЁё%].*"
+_INFERRED_UNIT_TOKENS = {"м", "шт"}
+_MIN_INFERRED_UNIT_ROWS = 2
 
 
 def _normalize_text(value: object) -> str:
@@ -166,6 +168,70 @@ def _is_total_label(text: str) -> bool:
     )
 
 
+def _infer_adjacent_unit_column(
+    worksheet,
+    *,
+    header_row: int,
+    roles: dict[str, int],
+) -> int | None:
+    """Infer only a strongly evidenced blank-header unit column.
+
+    The Stage 1A private control exposed one layout shaped as
+    item | quantity | <blank header>, where every item row stores a bounded
+    unit token in the cell immediately to the right of quantity. This helper
+    intentionally refuses single-row or mixed-content cases.
+    """
+
+    if "unit" in roles:
+        return None
+
+    candidate_column = roles["quantity"] + 1
+    if candidate_column > worksheet.max_column:
+        return None
+
+    header_cell = worksheet.cell(row=header_row, column=candidate_column)
+    if _normalize_text(header_cell.value):
+        return None
+
+    observed_rows = 0
+    for row in worksheet.iter_rows(min_row=header_row + 1):
+        item_cell = row[roles["item"] - 1]
+        if _is_formula(item_cell):
+            return None
+
+        item_name = "" if item_cell.value is None else str(item_cell.value).strip()
+        if not item_name:
+            if _row_has_content(row):
+                return None
+            continue
+
+        if _is_total_label(_normalize_text(item_name)):
+            break
+
+        quantity_cell = row[roles["quantity"] - 1]
+        if _is_formula(quantity_cell):
+            return None
+
+        quantity, quantity_unit = _as_quantity(quantity_cell.value)
+        if quantity is None or quantity_unit is not None:
+            return None
+
+        unit_cell = row[candidate_column - 1]
+        if _is_formula(unit_cell) or unit_cell.value is None:
+            return None
+
+        unit_value = str(unit_cell.value).replace("\u00a0", " ").strip().lower()
+        if unit_value not in _INFERRED_UNIT_TOKENS:
+            return None
+
+        observed_rows += 1
+
+    if observed_rows < _MIN_INFERRED_UNIT_ROWS:
+        return None
+
+    return candidate_column
+
+
 def extract_xlsx_lines(
     path: str | Path,
     *,
@@ -196,6 +262,11 @@ def extract_xlsx_lines(
 
             detected_table = True
             header_row, roles = header
+            inferred_unit_column = _infer_adjacent_unit_column(
+                worksheet,
+                header_row=header_row,
+                roles=roles,
+            )
             terminal_total_seen = False
             for row_number, row in enumerate(
                 worksheet.iter_rows(min_row=header_row + 1),
@@ -244,7 +315,7 @@ def extract_xlsx_lines(
                     )
 
                 unit_raw: str | None = quantity_unit
-                unit_column = roles.get("unit")
+                unit_column = roles.get("unit") or inferred_unit_column
                 if unit_column is not None:
                     unit_cell = row[unit_column - 1]
                     if _is_formula(unit_cell):
