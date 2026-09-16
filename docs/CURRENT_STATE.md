@@ -192,6 +192,21 @@ Remediation:
 - unknown keys fail closed as `INVALID_DATASET_KEY` without echoing the supplied value;
 - regressions cover space/slash input, filename-shaped ASCII and company-shaped ASCII.
 
+## PR #4 independent review #2 — FAIL
+
+Repeat independent review of exact head `cb02f96d37b7957bfd53ad1c106a57a06a134b75` returned `FAIL` with two P2 stderr-leakage findings:
+
+- removed legacy `--dataset-label` still leaked its supplied value through default argparse error output before safe handling;
+- `openpyxl` warnings could include workbook-controlled private text and reach stderr even when extraction exceptions were redacted.
+
+Remediation:
+
+- evaluation CLI now uses a custom parser whose error path raises internally and emits only `INVALID_ARGUMENTS`;
+- removed/unknown CLI arguments are never echoed;
+- the evaluation body runs inside `warnings.catch_warnings()` with warnings promoted to exceptions;
+- workbook/parser warnings therefore become ordinary aggregate extraction failures and cannot write raw warning text to stderr;
+- regressions reproduce both the stale `--dataset-label PRIVATE_SUPPLIER_SECRET.xlsx` invocation and a real openpyxl malformed Print_Area warning containing a private worksheet title.
+
 ## Immediate next action
 
 1. obtain SUCCESS hosted CI on the final evidence-synchronized PR #4 HEAD;
