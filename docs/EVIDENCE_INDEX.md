@@ -316,6 +316,18 @@ Decision from this control:
 - treat unlabeled-unit-column handling as the next measured Stage 1A extraction gap;
 - any remediation must preserve fail-closed behavior and add an explicit structural rule plus regression/private re-evaluation rather than heuristic guessing.
 
+## Stage 1A — PR #4 accepted
+
+Terminal acceptance:
+
+- accepted BASE: `ea67a647d31bf3e8238136f62d1c550aa1a26e76`;
+- reviewed HEAD: `2c54894fbb17e1904881c0c846eec86404b3601d`;
+- exact-head workflow: `35133348685` / run #106, SUCCESS across Ubuntu 3.11/3.13 and Windows 3.13;
+- independent exact-head semantic review: PASS, surviving findings 0, code-review v1.0;
+- merge commit on `main`: `1b0d6086d08855e84e859a715f1363bf529b3f11` on 2026-09-16.
+
+Accepted result: E1A evaluation harness plus aggregate-safe private-control runner.
+
 ## Stage 1A — PR #4 independent review #1
 
 Reviewed exact identity:
@@ -350,6 +362,55 @@ Remediation on the active branch:
 - custom safe argument parser converts CLI parse failures to `INVALID_ARGUMENTS` without echoing user input;
 - warnings emitted during gold/extraction evaluation are promoted to exceptions inside a warning-capture boundary;
 - regressions exercise the exact stale CLI path and a real malformed Print_Area workbook warning containing a private worksheet title.
+
+## Stage 1A — PR #5 provisional unlabeled-unit experiment
+
+PR #5 BASE:
+
+`1b0d6086d08855e84e859a715f1363bf529b3f11`
+
+Implementation/evidence pre-sync head:
+
+`fae7b576378d7ae0b598b1081f91da4639692f60`
+
+Hosted workflow `35140479068` / run #108: SUCCESS.
+
+Required matrices:
+
+- Ubuntu Python 3.11: 86 tests PASS;
+- Ubuntu Python 3.13: 86 tests PASS;
+- Windows Python 3.13: 86 tests PASS.
+
+Public anonymized-real benchmark/evaluation remains PASS with no metric regression.
+
+Private control dataset:
+
+`PRIVATE_CONTROL_0001`
+
+Same 4 documents / 28 human-adjudicated gold lines were evaluated outside GitHub. Only aggregate values are recorded.
+
+Accepted PR #4 baseline reproduced with inference disabled:
+
+- unit exact: 24/28 = 0.8571;
+- strict line: 24/28 = 0.8571;
+- document-perfect: 3/4 = 0.75;
+- extraction failures: 0.
+
+PR #5 candidate:
+
+- predicted lines: 28;
+- line precision/recall: 1.00 / 1.00;
+- item exact: 1.00;
+- quantity exact: 1.00;
+- role exact: 1.00;
+- unit exact: 28/28 = 1.00;
+- strict line: 28/28 = 1.00;
+- document-perfect: 4/4 = 1.00;
+- extraction failures: 0.
+
+The candidate rule is intentionally bounded to an immediately adjacent blank-header column, at least two supporting rows, and exact inferred tokens `м | шт`. Single-row, mixed-content, quantity-suffix, comment-like and non-adjacent cases are regression-tested to remain uninferred.
+
+This is provisional evidence only. Final exact-head CI and independent semantic review are still required before merge.
 
 ## Future research inputs
 
