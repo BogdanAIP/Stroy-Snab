@@ -81,17 +81,29 @@ The expanded Google Drive `Stroy-Snab` corpus is the preferred read-only raw sou
 
 Private evaluation may publish only aggregate metrics and opaque dataset ids. No raw filenames, identities, requisites, cell values or reverse mappings may enter repository evidence.
 
-## Immediate acceptance ladder
+## Current PR #3 evidence state
 
-For PR #3:
+Implementation head `96f9690eb37196ad414f002d90f98dab534415a4` passed hosted workflow run `35101156575` / run #74:
 
-1. hosted CI must pass on the final exact HEAD on Linux 3.11/3.13 and Windows 3.13;
-2. public `CASE_0001` benchmark must process at least one XLSX and extract at least one line without logging procurement contents;
-3. deterministic tests must remain green;
-4. provisional experiment evidence may then be recorded in `EVIDENCE_INDEX.md`;
-5. a bounded private XLSX control may be run separately with aggregate-only reporting;
-6. final candidate HEAD requires fresh independent exact-head semantic review using accepted `code-review` skill v1.0;
-7. any material fix moving HEAD invalidates the review and requires new CI/review.
+- Ubuntu Python 3.11: 49 tests PASS; public XLSX benchmark 1 document -> 1 line, ~3.273 ms;
+- Ubuntu Python 3.13: tests and benchmark PASS;
+- Windows Python 3.13.15: 49 tests PASS; public XLSX benchmark 1 document -> 1 line, ~4.942 ms;
+- benchmark logs contain aggregate counts/runtime only and report `content_logged=false`.
+
+The first public-fixture attempt exposed a concrete corpus shape: quantity and unit may share one cell. The extractor now parses a leading numeric quantity with an optional unit suffix and has a regression for that structure.
+
+Provisional evidence is recorded in `docs/EVIDENCE_INDEX.md`.
+
+Because canonical evidence synchronization moves HEAD, **the final candidate HEAD still requires a fresh hosted CI run** before review.
+
+## Immediate next action
+
+1. obtain SUCCESS hosted CI on the final evidence-synchronized HEAD;
+2. freeze exact `BASE_SHA / HEAD_SHA`;
+3. do not move HEAD after freeze;
+4. run a fresh independent read-only semantic review of PR #3 using accepted `.agents/skills/code-review/SKILL.md` v1.0;
+5. only a PASS on the exact frozen HEAD permits merge;
+6. any material fix requires new CI and review.
 
 ## Stage 1A work still not completed by PR #3
 
