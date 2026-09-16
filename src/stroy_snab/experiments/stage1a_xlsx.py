@@ -157,6 +157,10 @@ def _row_has_content(row) -> bool:
     )
 
 
+def _is_total_label(text: str) -> bool:
+    return re.match(r"^(?:итого|всего)(?:$|[\\s:])", text) is not None
+
+
 def extract_xlsx_lines(
     path: str | Path,
     *,
@@ -215,7 +219,7 @@ def extract_xlsx_lines(
                     continue
 
                 normalized_item = _normalize_text(item_name)
-                if normalized_item.startswith(_TOTAL_PREFIXES):
+                if _is_total_label(normalized_item):
                     terminal_total_seen = True
                     continue
 
