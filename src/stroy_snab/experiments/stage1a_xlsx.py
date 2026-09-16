@@ -56,7 +56,7 @@ _UNIT_SUFFIX = r"[A-Za-zА-Яа-яЁё%].*"
 def _normalize_text(value: object) -> str:
     if value is None:
         return ""
-    text = str(value).replace("\u00a0", " ").replace("ё", "е").strip().lower()
+    text = str(value).replace("\u00a0", " ").strip().lower().replace("ё", "е")
     text = re.sub(r"[\\/_.()\-]+", " ", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
