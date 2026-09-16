@@ -330,6 +330,27 @@ Finding: the first private-control runner accepted and echoed free-form ASCII da
 
 Remediation on the active branch replaces free-form output labels with a reviewed code-owned dataset-key registry. The current private control is represented by `PRIVATE_CONTROL_0001`; arbitrary labels are never echoed.
 
+## Stage 1A — PR #4 independent review #2
+
+Reviewed exact identity:
+
+- BASE: `ea67a647d31bf3e8238136f62d1c550aa1a26e76`;
+- reviewed HEAD: `cb02f96d37b7957bfd53ad1c106a57a06a134b75`;
+- review skill: `code-review` v1.0;
+- terminal result: **FAIL**;
+- surviving findings: **2**.
+
+Findings:
+
+1. default argparse diagnostics could echo the value supplied to the removed `--dataset-label` option before safe registry handling;
+2. openpyxl warnings could carry workbook-controlled private text to stderr independently of exception redaction.
+
+Remediation on the active branch:
+
+- custom safe argument parser converts CLI parse failures to `INVALID_ARGUMENTS` without echoing user input;
+- warnings emitted during gold/extraction evaluation are promoted to exceptions inside a warning-capture boundary;
+- regressions exercise the exact stale CLI path and a real malformed Print_Area workbook warning containing a private worksheet title.
+
 ## Future research inputs
 
 The following must be independently rechecked before adoption in their stages:
