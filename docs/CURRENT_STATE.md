@@ -75,16 +75,40 @@ Proposed private visual control id:
 
 Private visual evidence may publish only aggregate metrics and opaque ids. Raw PDFs/images, filenames, company identities, document numbers, page text and reverse mappings remain outside GitHub.
 
+## PR #6 independent review #1 — FAIL and remediation
+
+Fresh independent read-only review of exact head:
+
+`1059a3938b2ba52f55f9c8320f2dbb31127e1144`
+
+returned `FAIL` with one P2 research-gate finding:
+
+- the brief documented capabilities, releases, licenses and generic expected failure classes, but BASE `stage-research` v1.0 also requires candidate-specific tests/benchmarks plus issue/failure evidence and an explicit `Failure lessons` section;
+- without that evidence dimension, the `NARROW` decision could not yet serve as complete authority for the next external-component experiment.
+
+Remediation in the current branch:
+
+- the brief now contains `Failure lessons / upstream tests, benchmarks and issue evidence`;
+- pypdfium2 lessons cover existing Stage 1P cross-platform evidence, PDFium thread incompatibility, rotated geometry and native text-extraction failures;
+- Docling lessons record upstream benchmark context plus concrete table-loss, row-mis-pairing, column-order, serializer-loss and hybrid native/OCR failure cases;
+- PaddleOCR lessons record official component CPU/model benchmarks, PP-OCRv5 Russian/East-Slavic/Cyrillic recognition benchmarks, structured-output text-loss, unwarping, offline-model and engine failure evidence;
+- OCRmyPDF/Tesseract lessons record concrete Windows external-dependency and OCR text-layer alignment failures;
+- each lesson now changes the bounded experiment configuration or falsification plan: sequential native PDFium calls; pinned serial/no-OCR Docling digital configuration; structured rather than Markdown-only scoring; standard-engine/local-model/network-disabled Paddle execution with first-run unwarping disabled; and OCRmyPDF/Tesseract remaining deferred until a separate need is measured;
+- one pypdfium2 issue marked upstream as `spam / ai` was explicitly excluded from research evidence rather than used to inflate the case.
+
+Because remediation moved HEAD, the prior terminal review is stale for acceptance and a fresh exact-head independent review is required after hosted CI.
+
 ## Immediate next action
 
-1. obtain acceptance of the PDF/image research gate on exact branch HEAD;
-2. implement experiment-only provider-neutral `DocumentPageEvidence` boundary;
-3. establish pypdfium2 digital-PDF text baseline first;
-4. create synthetic digital-PDF, image-only PDF and image regressions without private content;
-5. compare Docling and PaddleOCR only against the same gold and baseline;
-6. measure E1A quality plus runtime/RAM/temp-disk/model footprint;
-7. run bounded `PRIVATE_VISUAL_CONTROL_0001` with aggregate-only evidence;
-8. require a fresh independent exact-head semantic review before experiment merge/promotion.
+1. obtain exact-head hosted CI after the research remediation;
+2. freeze the resulting PR #6 HEAD and run a fresh independent exact-head semantic review;
+3. merge PR #6 only on `PASS` with zero surviving findings;
+4. only after research-gate acceptance, implement experiment-only provider-neutral `DocumentPageEvidence` boundary;
+5. establish pypdfium2 digital-PDF text baseline first;
+6. create synthetic digital-PDF, image-only PDF and image regressions without private content;
+7. compare Docling and PaddleOCR only against the same gold and baseline;
+8. measure E1A quality plus runtime/RAM/temp-disk/model footprint;
+9. run bounded `PRIVATE_VISUAL_CONTROL_0001` with aggregate-only evidence.
 
 ## Stage 1A still open
 
