@@ -50,6 +50,8 @@ _UNIT_HEADERS = {
 }
 _STRICT_NUMBER = r"[+-]?(?:\d{1,3}(?:\s\d{3})+|\d+)(?:[.,]\d+)?"
 _UNIT_SUFFIX = r"[A-Za-zА-Яа-яЁё%].*"
+_INFERRED_UNIT_TOKENS = {"м", "шт"}
+_MIN_INFERRED_UNIT_ROWS = 2
 
 
 def _normalize_text(value: object) -> str:
@@ -166,6 +168,130 @@ def _is_total_label(text: str) -> bool:
     )
 
 
+def _header_block_start_row(worksheet, *, header_row: int) -> int:
+    """Return the first row in the contiguous non-empty header block."""
+
+    start_row = header_row
+    for row_index in range(header_row - 1, 0, -1):
+        row = next(
+            worksheet.iter_rows(
+                min_row=row_index,
+                max_row=row_index,
+            )
+        )
+        if not _row_has_content(row):
+            break
+        start_row = row_index
+    return start_row
+
+
+def _find_explicit_unit_column(
+    worksheet,
+    *,
+    header_row: int,
+    roles: dict[str, int],
+) -> int | None:
+    """Find a non-conflicting explicit unit header in the header block.
+
+    Staggered headers may place an explicit unit label above the row containing
+    item+quantity. A discovered unit column is authoritative only when it is
+    structurally distinct from the detected item and quantity columns.
+    """
+
+    start_row = _header_block_start_row(worksheet, header_row=header_row)
+
+    unit_columns: set[int] = set()
+    for row in worksheet.iter_rows(min_row=start_row, max_row=header_row):
+        for column_index, cell in enumerate(row, start=1):
+            if _header_role(cell.value) == "unit":
+                unit_columns.add(column_index)
+
+    if len(unit_columns) > 1:
+        raise XlsxLineExtractionError(
+            "ambiguous explicit unit headers in procurement header block"
+        )
+
+    if not unit_columns:
+        return None
+
+    unit_column = next(iter(unit_columns))
+    if unit_column in {roles["item"], roles["quantity"]}:
+        raise XlsxLineExtractionError(
+            "explicit unit header collides with item or quantity column"
+        )
+
+    return unit_column
+
+
+def _infer_adjacent_unit_column(
+    worksheet,
+    *,
+    header_row: int,
+    roles: dict[str, int],
+) -> int | None:
+    """Infer only a strongly evidenced single-row blank-header unit column.
+
+    The Stage 1A private control exposed one layout shaped as
+    item | quantity | <blank header>, where every item row stores a bounded
+    unit token in the cell immediately to the right of quantity. Inference is
+    intentionally disabled for multi-row header blocks because merged/staggered
+    labels can otherwise make a non-blank semantic header look blank on the
+    detected item+quantity row.
+    """
+
+    if "unit" in roles:
+        return None
+
+    if _header_block_start_row(worksheet, header_row=header_row) != header_row:
+        return None
+
+    candidate_column = roles["quantity"] + 1
+    if candidate_column > worksheet.max_column:
+        return None
+
+    header_cell = worksheet.cell(row=header_row, column=candidate_column)
+    if _normalize_text(header_cell.value):
+        return None
+
+    observed_rows = 0
+    for row in worksheet.iter_rows(min_row=header_row + 1):
+        item_cell = row[roles["item"] - 1]
+        if _is_formula(item_cell):
+            return None
+
+        item_name = "" if item_cell.value is None else str(item_cell.value).strip()
+        if not item_name:
+            if _row_has_content(row):
+                return None
+            continue
+
+        if _is_total_label(_normalize_text(item_name)):
+            break
+
+        quantity_cell = row[roles["quantity"] - 1]
+        if _is_formula(quantity_cell):
+            return None
+
+        quantity, quantity_unit = _as_quantity(quantity_cell.value)
+        if quantity is None or quantity_unit is not None:
+            return None
+
+        unit_cell = row[candidate_column - 1]
+        if _is_formula(unit_cell) or unit_cell.value is None:
+            return None
+
+        unit_value = str(unit_cell.value).replace("\u00a0", " ").strip().lower()
+        if unit_value not in _INFERRED_UNIT_TOKENS:
+            return None
+
+        observed_rows += 1
+
+    if observed_rows < _MIN_INFERRED_UNIT_ROWS:
+        return None
+
+    return candidate_column
+
+
 def extract_xlsx_lines(
     path: str | Path,
     *,
@@ -196,6 +322,19 @@ def extract_xlsx_lines(
 
             detected_table = True
             header_row, roles = header
+            explicit_unit_column = _find_explicit_unit_column(
+                worksheet,
+                header_row=header_row,
+                roles=roles,
+            )
+            if explicit_unit_column is not None:
+                roles = {**roles, "unit": explicit_unit_column}
+
+            inferred_unit_column = _infer_adjacent_unit_column(
+                worksheet,
+                header_row=header_row,
+                roles=roles,
+            )
             terminal_total_seen = False
             for row_number, row in enumerate(
                 worksheet.iter_rows(min_row=header_row + 1),
@@ -244,7 +383,7 @@ def extract_xlsx_lines(
                     )
 
                 unit_raw: str | None = quantity_unit
-                unit_column = roles.get("unit")
+                unit_column = roles.get("unit") or inferred_unit_column
                 if unit_column is not None:
                     unit_cell = row[unit_column - 1]
                     if _is_formula(unit_cell):

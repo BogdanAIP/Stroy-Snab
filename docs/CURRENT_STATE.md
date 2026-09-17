@@ -5,11 +5,12 @@
 ## Live repository state
 
 - default branch: `main`;
-- current `main` HEAD at PR #4 start: `ea67a647d31bf3e8238136f62d1c550aa1a26e76`;
+- current `main` HEAD at PR #5 start: `1b0d6086d08855e84e859a715f1363bf529b3f11`;
 - Stage 0 accepted and merged via PR #1;
 - Stage 1P accepted and merged via PR #2 on 2026-09-14;
 - Stage 1A native XLSX baseline accepted and merged via PR #3 on 2026-09-16;
-- active work: draft PR #4, branch `stage1a/xlsx-evaluation`;
+- Stage 1A XLSX evaluation harness accepted and merged via PR #4 on 2026-09-16;
+- active work: PR #5 branch `stage1a/unlabeled-adjacent-unit`;
 - current roadmap stage: **Stage 1A — Document extraction/evaluation**.
 
 Live GitHub state is authoritative for the current PR HEAD, CI and review status. This file intentionally does not claim that the current HEAD has passed CI; exact-head acceptance state must be resolved live before review/merge.
@@ -76,11 +77,11 @@ Accepted baseline includes:
 
 Final pre-merge candidate was `79724de933958ba6dde0f3e2b4ac1c01accfdf02`; hosted workflow #92 passed all required matrices and confirmed review findings were remediated before merge.
 
-## Active PR #4 scope
+## Accepted PR #4 implemented scope
 
-PR #4: `Stage 1A: add XLSX extraction evaluation harness`.
+PR #4: `Stage 1A: add XLSX extraction evaluation harness` is accepted and merged.
 
-Current scope:
+Accepted scope:
 
 - public anonymized-real gold labels for accepted `CASE_0001 / REQUEST_0001`;
 - E1A line detection precision/recall;
@@ -92,6 +93,42 @@ Current scope:
 - CI execution and regression tests.
 
 No PDF/JPG extraction, OCR/VLM adoption, supplier discovery, matching/equivalence, lifecycle linkage implementation or raw corpus publication is part of PR #4.
+
+## Accepted PR #4 evaluation harness
+
+PR #4 `Stage 1A: add XLSX extraction evaluation harness` is merged in `main` as:
+
+`1b0d6086d08855e84e859a715f1363bf529b3f11`
+
+Final reviewed candidate:
+
+`2c54894fbb17e1904881c0c846eec86404b3601d`
+
+Terminal independent review: `PASS`, surviving findings `0`.
+
+Accepted harness provides reproducible E1A line/field/document metrics plus aggregate-safe private-control execution.
+
+## Active PR #5 scope
+
+Measured private-control gap from `PRIVATE_CONTROL_0001`:
+
+- 4 documents / 28 gold lines;
+- line detection, item and quantity accuracy: 1.00;
+- unit exact accuracy: 24/28 = 0.8571;
+- document-perfect: 3/4;
+- one real XLSX layout stores valid unit values in the blank-header column immediately right of quantity.
+
+PR #5 tests one explicit structural rule only:
+
+- no explicit unit header may exist;
+- candidate unit column must be immediately right of quantity;
+- its header must be blank;
+- at least two procurement rows must support the inference;
+- every considered item row must have a non-empty unit token from the bounded allowlist `м | шт`;
+- quantity cells carrying their own unit suffix block the structural inference;
+- mixed/comment/non-adjacent/single-row cases remain uninferred.
+
+This is deliberately narrower than general unit normalization and does not add supplier discovery, matching, lifecycle linkage, PDF/OCR or other Stage 1 capabilities.
 
 ## Private source corpus
 
@@ -207,17 +244,48 @@ Remediation:
 - workbook/parser warnings therefore become ordinary aggregate extraction failures and cannot write raw warning text to stderr;
 - regressions reproduce both the stale `--dataset-label PRIVATE_SUPPLIER_SECRET.xlsx` invocation and a real openpyxl malformed Print_Area warning containing a private worksheet title.
 
+## PR #5 provisional evaluation result
+
+Hosted workflow on implementation/evidence pre-sync head `fae7b576378d7ae0b598b1081f91da4639692f60`:
+
+- run `35140479068` / #108: SUCCESS;
+- Ubuntu Python 3.11: 86 tests PASS;
+- Ubuntu Python 3.13: 86 tests PASS;
+- Windows Python 3.13: 86 tests PASS;
+- public anonymized-real benchmark/evaluation unchanged and PASS.
+
+Repeated private control `PRIVATE_CONTROL_0001` on the same 4 documents / 28 gold lines reproduced the accepted PR #4 baseline when the new inference was disabled:
+
+- unit exact: 24/28 = 0.8571;
+- strict line: 24/28 = 0.8571;
+- document-perfect: 3/4 = 0.75;
+- extraction failures: 0.
+
+With the PR #5 rule enabled:
+
+- predicted lines: 28/28;
+- line detection precision/recall: 1.00 / 1.00;
+- item exact: 1.00;
+- quantity exact: 1.00;
+- role exact: 1.00;
+- unit exact: 28/28 = 1.00;
+- strict line: 28/28 = 1.00;
+- document-perfect: 4/4 = 1.00;
+- extraction failures: 0.
+
+No raw filenames, item values, worksheet titles, paths or reverse mapping are recorded in repository evidence.
+
 ## Immediate next action
 
-1. obtain SUCCESS hosted CI on the final evidence-synchronized PR #4 HEAD;
-2. freeze exact `BASE_SHA / HEAD_SHA`;
-3. perform fresh independent exact-head semantic review under accepted `.agents/skills/code-review/SKILL.md` v1.0;
-4. merge PR #4 only on exact-head PASS with zero surviving findings;
-5. next Stage 1A PR: test an explicit, fail-closed structural rule for unlabeled adjacent unit columns against public regressions and the same opaque private control.
+1. obtain hosted CI for PR #5 across the required Linux/Windows matrix;
+2. repeat `PRIVATE_CONTROL_0001` against the new extractor without publishing raw documents;
+3. compare unit/strict/document-perfect metrics against the accepted PR #4 baseline;
+4. reject or narrow the rule if any previously correct line/item/quantity behavior regresses;
+5. if evidence is positive, freeze exact PR #5 BASE/HEAD and run fresh independent exact-head semantic review before merge.
 
-## Stage 1A work still not completed by PR #3
+## Stage 1A work still not completed
 
-Even if PR #3 is accepted, Stage 1A remains open.
+Stage 1A remains open after PR #4 and the current PR #5 experiment.
 
 Still required:
 
