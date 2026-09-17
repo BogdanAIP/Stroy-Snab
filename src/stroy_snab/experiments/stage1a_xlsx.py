@@ -168,6 +168,48 @@ def _is_total_label(text: str) -> bool:
     )
 
 
+def _find_explicit_unit_column(
+    worksheet,
+    *,
+    header_row: int,
+) -> int | None:
+    """Find an explicit unit header in the contiguous header block.
+
+    Header roles are normally detected on the row containing item+quantity.
+    Staggered or merged headers may place the explicit unit label one or more
+    contiguous rows above that row. In that case the explicit column remains
+    authoritative and must block structural inference.
+    """
+
+    start_row = header_row
+    for row_index in range(header_row - 1, 0, -1):
+        row = next(
+            worksheet.iter_rows(
+                min_row=row_index,
+                max_row=row_index,
+            )
+        )
+        if not _row_has_content(row):
+            break
+        start_row = row_index
+
+    unit_columns: set[int] = set()
+    for row in worksheet.iter_rows(min_row=start_row, max_row=header_row):
+        for column_index, cell in enumerate(row, start=1):
+            if _header_role(cell.value) == "unit":
+                unit_columns.add(column_index)
+
+    if len(unit_columns) > 1:
+        raise XlsxLineExtractionError(
+            "ambiguous explicit unit headers in procurement header block"
+        )
+
+    if not unit_columns:
+        return None
+
+    return next(iter(unit_columns))
+
+
 def _infer_adjacent_unit_column(
     worksheet,
     *,
@@ -262,6 +304,13 @@ def extract_xlsx_lines(
 
             detected_table = True
             header_row, roles = header
+            explicit_unit_column = _find_explicit_unit_column(
+                worksheet,
+                header_row=header_row,
+            )
+            if explicit_unit_column is not None:
+                roles = {**roles, "unit": explicit_unit_column}
+
             inferred_unit_column = _infer_adjacent_unit_column(
                 worksheet,
                 header_row=header_row,
