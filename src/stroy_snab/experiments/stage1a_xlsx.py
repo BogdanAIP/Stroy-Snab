@@ -168,18 +168,8 @@ def _is_total_label(text: str) -> bool:
     )
 
 
-def _find_explicit_unit_column(
-    worksheet,
-    *,
-    header_row: int,
-) -> int | None:
-    """Find an explicit unit header in the contiguous header block.
-
-    Header roles are normally detected on the row containing item+quantity.
-    Staggered or merged headers may place the explicit unit label one or more
-    contiguous rows above that row. In that case the explicit column remains
-    authoritative and must block structural inference.
-    """
+def _header_block_start_row(worksheet, *, header_row: int) -> int:
+    """Return the first row in the contiguous non-empty header block."""
 
     start_row = header_row
     for row_index in range(header_row - 1, 0, -1):
@@ -192,6 +182,23 @@ def _find_explicit_unit_column(
         if not _row_has_content(row):
             break
         start_row = row_index
+    return start_row
+
+
+def _find_explicit_unit_column(
+    worksheet,
+    *,
+    header_row: int,
+    roles: dict[str, int],
+) -> int | None:
+    """Find a non-conflicting explicit unit header in the header block.
+
+    Staggered headers may place an explicit unit label above the row containing
+    item+quantity. A discovered unit column is authoritative only when it is
+    structurally distinct from the detected item and quantity columns.
+    """
+
+    start_row = _header_block_start_row(worksheet, header_row=header_row)
 
     unit_columns: set[int] = set()
     for row in worksheet.iter_rows(min_row=start_row, max_row=header_row):
@@ -207,7 +214,13 @@ def _find_explicit_unit_column(
     if not unit_columns:
         return None
 
-    return next(iter(unit_columns))
+    unit_column = next(iter(unit_columns))
+    if unit_column in {roles["item"], roles["quantity"]}:
+        raise XlsxLineExtractionError(
+            "explicit unit header collides with item or quantity column"
+        )
+
+    return unit_column
 
 
 def _infer_adjacent_unit_column(
@@ -216,15 +229,20 @@ def _infer_adjacent_unit_column(
     header_row: int,
     roles: dict[str, int],
 ) -> int | None:
-    """Infer only a strongly evidenced blank-header unit column.
+    """Infer only a strongly evidenced single-row blank-header unit column.
 
     The Stage 1A private control exposed one layout shaped as
     item | quantity | <blank header>, where every item row stores a bounded
-    unit token in the cell immediately to the right of quantity. This helper
-    intentionally refuses single-row or mixed-content cases.
+    unit token in the cell immediately to the right of quantity. Inference is
+    intentionally disabled for multi-row header blocks because merged/staggered
+    labels can otherwise make a non-blank semantic header look blank on the
+    detected item+quantity row.
     """
 
     if "unit" in roles:
+        return None
+
+    if _header_block_start_row(worksheet, header_row=header_row) != header_row:
         return None
 
     candidate_column = roles["quantity"] + 1
@@ -307,6 +325,7 @@ def extract_xlsx_lines(
             explicit_unit_column = _find_explicit_unit_column(
                 worksheet,
                 header_row=header_row,
+                roles=roles,
             )
             if explicit_unit_column is not None:
                 roles = {**roles, "unit": explicit_unit_column}
