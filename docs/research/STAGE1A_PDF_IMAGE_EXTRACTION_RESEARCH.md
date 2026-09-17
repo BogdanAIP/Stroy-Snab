@@ -128,7 +128,7 @@ License: Apache-2.0.
 Sources:
 
 - https://github.com/PaddlePaddle/PaddleOCR/releases/tag/v3.7.0
-- https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/pipeline_usage/PP-StructureV3.md
+- https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/pipeline_usage/PP-StructureV3.en.md
 - https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/pipeline_usage/OCR.en.md
 - https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/algorithm/PP-OCRv5/PP-OCRv5_multi_languages.en.md
 
@@ -153,6 +153,117 @@ Sources:
 - https://github.com/tesseract-ocr/tesseract/releases/tag/5.5.3
 - https://github.com/tesseract-ocr/tesseract
 
+## Failure lessons / upstream tests, benchmarks and issue evidence
+
+The sources below are not treated as proof that a historical bug still exists in the exact versions selected for E1A-PDF-IMG-1. They are failure evidence that defines what the experiment must pin, reproduce, falsify or measure. Provider marketing benchmarks are priors only; procurement accuracy is decided on the same Stroy-Snab gold.
+
+### pypdfium2 / PDFium lessons
+
+Existing Stroy-Snab Stage 1P CI already exercises the accepted pypdfium2/PDFium substrate on Linux and Windows through PDF rendering. The synthetic Stage 1P resource benchmark processes three PDF pages and has remained around a ~110 MB whole-benchmark peak RSS envelope in hosted CI. This proves basic cross-platform availability, not PDF text/table accuracy.
+
+Upstream failure evidence:
+
+- pypdfium2 documents PDFium thread incompatibility; project issue #206 discusses sequencing PDFium calls because simultaneous calls may crash, and issue #309 reports random `Data format error` failures from a threaded Celery pool;
+- issue #234 demonstrates that rotated pages require explicit care when converting text bounding boxes between PDF/page/device coordinate systems;
+- issue #306 reports a special-character extraction mismatch tied to PDF/font behavior;
+- issue #298 was a severe `get_text_range()` buffer-size mismatch on a concrete PDF and reinforces fail-closed handling of native text extraction errors.
+
+Experiment consequences:
+
+- `native_pdf_text` is sequential within one process; no shared-process thread parallelism is credited in the first experiment;
+- rotated-page fixtures must verify both extracted text and normalized geometry/source locators;
+- synthetic text-layer fixtures include Cyrillic and visually/semantically critical special characters rather than ASCII-only smoke tests;
+- native extraction exceptions or inconsistent text evidence are explicit extraction failures, never silent empty-success rows;
+- the first baseline may use page-bounded text access and must not assume `get_text_range()` or native character order is always authoritative.
+
+Sources:
+
+- https://pypdfium2.readthedocs.io/en/stable/python_api.html#thread-incompatibility
+- https://github.com/pypdfium2-team/pypdfium2/issues/206
+- https://github.com/pypdfium2-team/pypdfium2/issues/309
+- https://github.com/pypdfium2-team/pypdfium2/issues/234
+- https://github.com/pypdfium2-team/pypdfium2/issues/306
+- https://github.com/pypdfium2-team/pypdfium2/issues/298
+
+### Docling lessons
+
+Upstream benchmark evidence is useful but incomplete for procurement. A September 2026 Docling proposal (#4146) cites an internal comparison over OmniDocBench and DocLayNet structure slices with element pass rates around `0.71` and `0.77` on 50-item slices, plus remaining reading-order headroom. These figures motivate testing Docling but are not accepted as procurement-table accuracy claims.
+
+Concrete issue/failure evidence:
+
+- issue #3512 reproduced a backend-dependent table loss: the serial `DoclingParseDocumentBackend` detected one table while `ThreadedDoclingParseDocumentBackend` returned zero even with `parser_threads=1`. The issue was closed on 2026-09-16, so the experiment must verify the exact 2.128.0 behavior rather than assume the historical failure persists;
+- open issue #4028 reports silent row-content corruption in dense multi-page ruled tables with wrapped cells: table shape can look correct while the tail of one row is attached to the next row; it was reproduced across Docling 2.95.0 and 2.120.3;
+- open issue #3194 shows cases where predicted table column order disagrees with cell `bbox.l` geometry;
+- open issue #3473 shows OCR `TextItem`s present in structured JSON but absent from `md_content` for TABLE regions;
+- open issue #4083 reports row labels and numeric values shifting under hybrid native-PDF/OCR behavior on PDFs with a partial/unreliable text layer.
+
+Experiment consequences:
+
+- first Docling digital-PDF comparator pins the serial PDF backend and `do_ocr=False`; backend identity is part of the recorded provider configuration;
+- Docling is scored from structured `DoclingDocument`/JSON evidence, not Markdown serialization alone;
+- adversarial fixtures include a multi-page table with wrapped item text and a geometry/order check; scoring requires exact item/unit/quantity row association, not merely correct table/row counts;
+- canonicalization may use geometry as evidence, but conflicting structural order vs geometry is surfaced as a warning/failure rather than silently selecting a column order;
+- hybrid native+OCR Docling behavior is outside the first digital comparator; if later tested, it becomes a separate configuration and cannot inherit the digital-only result.
+
+Sources:
+
+- https://github.com/docling-project/docling/issues/4146
+- https://github.com/docling-project/docling/issues/3512
+- https://github.com/docling-project/docling/issues/4028
+- https://github.com/docling-project/docling/issues/3194
+- https://github.com/docling-project/docling/issues/3473
+- https://github.com/docling-project/docling/issues/4083
+
+### PaddleOCR / PP-StructureV3 lessons
+
+Official PP-StructureV3 documentation publishes per-model accuracy, CPU inference time and model-size benchmarks, and explicitly notes that reported inference time excludes pre/post-processing. Examples from the checked documentation show a large spread in CPU cost: `PP-DocLayout-S` is listed at 70.9 mAP(0.5), 18.53/6.29 ms CPU and 4.834 MB, while `PP-DocLayout-L` is listed at 90.4 mAP(0.5), 503.01/251.08 ms CPU and 123.76 MB; the larger `PP-DocLayout_plus-L` is listed at 83.2 mAP(0.5), 634.62/378.32 ms CPU and 126.01 MB. These are component benchmarks, not end-to-end procurement results.
+
+For Russian recognition, official PP-OCRv5 multilingual benchmarks report `eslav_PP-OCRv5_mobile_rec` at 81.6% on an East-Slavic dataset of 7,031 Russian/Belarusian/Ukrainian text images and `cyrillic_PP-OCRv5_mobile_rec` at 80.27% on a 7,600-image Cyrillic dataset. These results justify including the Russian/East-Slavic path, but do not establish accuracy on procurement SKUs, quantities or units.
+
+Concrete issue/failure evidence:
+
+- issue #16037 reports text recognized by standalone PP-OCRv5 being absent from PP-StructureV3 output even though recognition boxes were present;
+- issue #17503 reproduced a PP-StructureV3 `ValueError("The list of bounding boxes is empty.")` with `use_doc_unwarping=True` on Windows and Linux, CPU and CUDA; disabling unwarping avoided the reported failure. The issue is closed, so this is a configuration lesson to verify on 3.7.0 rather than an assertion that the current release is broken;
+- issues #16606/#16656 report offline/local-model configurations still attempting hosting/network resolution in older 3.x deployments, and #15589 reports repeat model download behavior;
+- issue #18117 shows an alternate `transformers` engine table path failing in a newer configuration; that engine is not needed for the first Windows CPU comparison.
+
+Experiment consequences:
+
+- first `paddle_structure_ru` pins the ordinary Paddle inference path, exact model names/directories and PP-OCRv5 Russian/East-Slavic recognition; optional transformer-engine variants are excluded;
+- `use_doc_unwarping=False` in the initial comparator so OCR/layout quality can be measured without adding a second preprocessing variable; warped/skewed input is a later bounded configuration if needed;
+- model assets are pre-resolved and the experiment includes a network-disabled startup/inference check; unexpected model-host access fails reproducibility/privacy acceptance;
+- structured PP-Structure output is compared with its underlying OCR text coverage so recognized-but-dropped text is observable;
+- end-to-end runtime, peak RSS, temporary disk and total model/download footprint are measured because official component inference times exclude pre/post-processing and model startup.
+
+Sources:
+
+- https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/pipeline_usage/PP-StructureV3.en.md
+- https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/algorithm/PP-OCRv5/PP-OCRv5_multi_languages.en.md
+- https://github.com/PaddlePaddle/PaddleOCR/issues/16037
+- https://github.com/PaddlePaddle/PaddleOCR/issues/17503
+- https://github.com/PaddlePaddle/PaddleOCR/issues/16606
+- https://github.com/PaddlePaddle/PaddleOCR/issues/16656
+- https://github.com/PaddlePaddle/PaddleOCR/issues/15589
+- https://github.com/PaddlePaddle/PaddleOCR/issues/18117
+
+### OCRmyPDF / Tesseract lessons
+
+OCRmyPDF remains a mature reference for producing searchable OCR text layers, but upstream Windows issue evidence supports keeping it outside the first primary path:
+
+- issue #1629 shows a Windows/MSYS2 installation where Ghostscript existed as `gs.exe`/`gswin32c.exe` but OCRmyPDF expected `gswin64c`, preventing startup until the executable mapping was corrected;
+- issue #1567 shows an OCRmyPDF/Tesseract configuration failing because selected tessdata lacked the `hocr` and `txt` config scripts required by the integration;
+- issue #1216 reports an OCR text layer misaligned with the page image on a concrete Windows/macOS reproduction;
+- issue #1636 documents a Windows case where CLI and Python API behavior diverged while Ghostscript was absent.
+
+Experiment consequence: OCRmyPDF/Tesseract stays `DEFER` for E1A-PDF-IMG-1. If activated later, the configuration must pin external binary versions/paths, prove an offline Windows installation, and validate OCR text geometry against the same page gold. A searchable text layer alone earns no table/row reconstruction credit.
+
+Sources:
+
+- https://github.com/ocrmypdf/OCRmyPDF/issues/1629
+- https://github.com/ocrmypdf/OCRmyPDF/issues/1567
+- https://github.com/ocrmypdf/OCRmyPDF/issues/1216
+- https://github.com/ocrmypdf/OCRmyPDF/issues/1636
+
 ## Alternatives comparison
 
 | Approach | Digital PDF | Scan/JPG | Table/layout | Windows CPU-first fit | Dependency blast radius | Experiment role |
@@ -170,9 +281,11 @@ No single candidate is accepted as default from source claims alone.
 
 Compare three active paths behind one experiment-only adapter contract:
 
-1. `native_pdf_text` — pypdfium2 text-layer extraction for digital PDFs;
-2. `docling_layout` — Docling standard pipeline with OCR disabled for digital-PDF/layout comparison;
-3. `paddle_structure_ru` — PP-StructureV3 with PP-OCRv5 Russian recognition for image-only PDF/JPG/scanned documents.
+1. `native_pdf_text` — pypdfium2 text-layer extraction for digital PDFs, sequential within one process;
+2. `docling_layout` — Docling 2.128.0 standard pipeline with serial PDF backend and OCR disabled for digital-PDF/layout comparison;
+3. `paddle_structure_ru` — PaddleOCR 3.7.x PP-StructureV3 using the standard Paddle engine, PP-OCRv5 Russian/East-Slavic recognition, explicit local model assets and document unwarping disabled for the first image-only PDF/JPG/scanned comparison.
+
+Every result records an exact `provider_config_id` resolving provider version, backend/engine, model identities and relevant preprocessing switches. A configuration change that could affect extraction quality is a new experiment configuration, not the same provider result.
 
 OCRmyPDF/Tesseract is not installed in the first experiment; it remains a documented fallback comparator if the active paths cannot provide a usable OCR text substrate on Windows.
 
@@ -183,7 +296,7 @@ Use repository-generated `synthetic` fixtures only in the first experiment:
 - digital PDF with a simple procurement table and real text layer;
 - image-only/scanned PDF containing the same synthetic table;
 - JPG/PNG equivalent;
-- adversarial synthetic variants: rotated page, Cyrillic/Latin lookalikes, decimal comma, merged/multiline item text, page split.
+- adversarial synthetic variants: rotated page, Cyrillic/Latin lookalikes and special characters, decimal comma, merged/multiline item text, multi-page wrapped rows/page split, and deliberately partial/empty native text where feasible.
 
 Fixtures must contain no private names, filenames, numbers or reverse mappings.
 
@@ -211,6 +324,7 @@ DocumentPageEvidence
 - document_id
 - page_number
 - provider
+- provider_config_id
 - text_blocks[]
   - text
   - bbox? / polygon?
@@ -240,13 +354,14 @@ Additional visual-extraction metrics:
 - text-block/row ordering error count;
 - OCR character/token error notes for critical procurement tokens;
 - page/table split error count;
+- structured-output text coverage where a provider has both OCR/text blocks and parsed structure;
 - extraction failure rate;
-- per-document runtime;
+- per-document runtime including pre/post-processing;
 - peak RSS;
 - temporary disk use;
-- model/download footprint for optional providers.
+- model/download footprint and network-access count for optional providers.
 
-Quality comparisons must use the same gold and same canonical line parser where possible. Provider output may not be manually corrected before scoring.
+Quality comparisons must use the same gold and same canonical line parser where possible. Provider output may not be manually corrected before scoring. Serializer output such as Markdown is not the sole scoring oracle when the provider exposes a richer structured representation.
 
 ## Falsification criteria
 
@@ -261,12 +376,14 @@ Quality comparisons must use the same gold and same canonical line parser where 
 - it does not materially improve line/document metrics over native digital PDF parsing;
 - CPU/RAM/disk/model cost makes it unsuitable as a mandatory local path;
 - its output loses source provenance needed for deterministic line locators;
+- structured output silently disagrees with row geometry or loses text needed for procurement-line reconstruction;
 - dependency/model licensing cannot be bounded cleanly.
 
 ### PaddleOCR/PP-StructureV3 is not promoted when
 
 - Russian OCR produces critical item/unit/number errors at unacceptable rate;
-- table/row ordering introduces false procurement lines;
+- PP-Structure drops text present in its OCR substrate or table/row ordering introduces false procurement lines;
+- network-disabled execution cannot be made reproducible with pinned local model assets;
 - CPU resource cost exceeds the normal 16 GB local target without a clearly optional fallback architecture;
 - model downloads/runtime cannot be made reproducible and version-pinned.
 
@@ -282,6 +399,7 @@ native text extraction plus narrower deterministic parsing meets the measured di
 - provider errors/warnings must be sanitized before repository evidence;
 - model/API candidates that require sending raw documents to third-party hosted services are out of scope for this experiment;
 - local/offline execution is the default privacy boundary;
+- optional model assets are pre-resolved before private-control execution and unexpected network access is a failed privacy/reproducibility check;
 - any future public anonymized-real visual fixture must independently pass Stage 1P Anonymization Gate plus completed manual visual review before commit.
 
 ## Architecture decision
@@ -291,12 +409,13 @@ native text extraction plus narrower deterministic parsing meets the measured di
 Authorized next scope:
 
 1. implement experiment-only provider-neutral `DocumentPageEvidence` boundary;
-2. add a native pypdfium2 digital-PDF text baseline using the already accepted dependency;
-3. add reproducible synthetic digital-PDF/image fixtures and E1A evaluation plumbing;
-4. test Docling 2.128.x as an optional digital layout/table comparator behind the same boundary;
-5. test PaddleOCR 3.7.x PP-StructureV3 with PP-OCRv5 Russian recognition as an optional scan/JPG comparator behind the same boundary;
-6. perform a bounded raw-private control and publish only aggregate metrics;
-7. keep every heavy provider optional until evidence supports promotion.
+2. add a native pypdfium2 digital-PDF text baseline using the already accepted dependency, with sequential PDFium calls in the first experiment;
+3. add reproducible synthetic digital-PDF/image fixtures and E1A evaluation plumbing, including rotation, special-character and multi-page wrapped-row cases;
+4. test Docling 2.128.x as an optional digital layout/table comparator behind the same boundary, with a pinned serial backend and OCR disabled for this configuration;
+5. test PaddleOCR 3.7.x PP-StructureV3 with PP-OCRv5 Russian/East-Slavic recognition as an optional scan/JPG comparator behind the same boundary, with pinned local model assets, standard Paddle engine and unwarping disabled in the first configuration;
+6. verify optional OCR/layout provider startup/inference with network disabled before using raw private controls;
+7. perform a bounded raw-private control and publish only aggregate metrics;
+8. keep every heavy provider optional until evidence supports promotion.
 
 Not authorized:
 
@@ -304,18 +423,20 @@ Not authorized:
 - hosted/cloud OCR on raw private documents;
 - general-purpose custom OCR/layout framework;
 - supplier/matching/lifecycle work in this experiment;
+- treating upstream provider benchmarks as Stroy-Snab procurement accuracy evidence;
 - declaring Stage 1A complete without an accepted anonymized-real visual regression fixture or an explicit accepted reason to keep visual evaluation private-only.
 
 ## Acceptance ladder
 
-1. this research brief is present and terminal decision remains `NARROW`;
+1. this research brief is present, contains candidate-specific failure lessons/test/benchmark evidence, and terminal decision remains `NARROW`;
 2. experiment adapter is provider-neutral and heavy dependencies are optional extras;
-3. synthetic digital PDF + scan/image regressions run reproducibly;
+3. synthetic digital PDF + scan/image regressions run reproducibly, including the failure classes derived from upstream lessons;
 4. native baseline is measured before crediting heavy components;
-5. provider/config/model versions are recorded exactly;
-6. public logs contain no procurement contents/paths and remain aggregate-only;
-7. private control produces only opaque aggregate evidence;
-8. Windows/Linux CPU resource results are recorded for any candidate proposed as mandatory;
-9. no unexplained regression in accepted XLSX Stage 1A behavior;
-10. fresh exact-head independent semantic review is required before merge;
-11. a separate promotion decision is required before any heavy provider becomes the default production path.
+5. provider/config/backend/engine/model versions and preprocessing switches are recorded exactly;
+6. optional OCR/layout providers pass a network-disabled startup/inference check before private-control use;
+7. public logs contain no procurement contents/paths and remain aggregate-only;
+8. private control produces only opaque aggregate evidence;
+9. Windows/Linux CPU end-to-end resource results are recorded for any candidate proposed as mandatory;
+10. no unexplained regression in accepted XLSX Stage 1A behavior;
+11. fresh exact-head independent semantic review is required before merge;
+12. a separate promotion decision is required before any heavy provider becomes the default production path.
