@@ -92,10 +92,10 @@ Explicitly out of scope for this bounded PR:
 
 Development-side isolated preflight for the new native-PDF files:
 
-- 8/8 focused tests passed;
+- 9/9 focused tests passed;
 - synthetic benchmark: 1 document / 3 pages / 153 extracted characters;
 - one rotated page was surfaced explicitly;
-- local elapsed time was about 31.6 ms on the latest preflight run;
+- local elapsed time was about 31.8 ms on the latest preflight run;
 - local whole-process peak RSS was about 94.5 MB;
 - local pypdfium2: 5.8.0;
 - local PDFium: 149.0.7825.0;
@@ -104,6 +104,8 @@ Development-side isolated preflight for the new native-PDF files:
 - benchmark output contains aggregate metadata only and declares `content_logged=false`, `paths_logged=false`.
 
 These are development-environment measurements only. They are not hosted CI evidence and are not measurements of the user's exact PC.
+
+PR #7 `Stage 1A: establish native PDF text baseline` is open against the accepted BASE `ee065e2bdb4c77c6304df773ecbf47d5303354b5`.
 
 ## Acceptance gate for the active experiment
 
@@ -119,8 +121,8 @@ Before merge:
 
 ## Immediate next action
 
-1. open the bounded native-PDF baseline PR;
-2. obtain hosted exact-head CI and record Linux/Windows resource evidence;
+1. obtain hosted exact-head CI for PR #7 and record Linux/Windows resource evidence;
+2. verify the accepted XLSX suite and benchmarks remain unchanged;
 3. remediate only concrete findings/regressions, if any;
 4. freeze final HEAD and run independent exact-head review;
 5. merge only on `PASS`;
