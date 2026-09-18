@@ -62,6 +62,7 @@ Objective:
 - implement experiment-only provider-neutral `DocumentPageEvidence`;
 - extract native digital-PDF text with the already accepted pypdfium2/PDFium dependency;
 - keep PDFium calls sequential in the first experiment;
+- carry forward the accepted Stage 1P 100 MB source / 50-page bounds and add a 1,000,000 native-character per-page cap before materializing text;
 - preserve page-level provenance without raw source filenames;
 - expose only reviewed safe warning codes;
 - record exact pypdfium2/PDFium runtime identity;
@@ -90,9 +91,9 @@ Explicitly out of scope for this bounded PR:
 
 ## Local preflight evidence
 
-Development-side isolated preflight for the new native-PDF files:
+Development-side isolated preflight before the later resource-limit hardening:
 
-- 10/10 focused tests passed;
+- 10/10 focused tests passed at that earlier head;
 - synthetic benchmark: 1 document / 3 pages / 153 extracted characters;
 - one rotated page was surfaced explicitly;
 - local elapsed time was about 34.5 ms on the latest preflight run;
@@ -103,7 +104,7 @@ Development-side isolated preflight for the new native-PDF files:
 - model footprint: 0;
 - benchmark output contains aggregate metadata only and declares `content_logged=false`, `paths_logged=false`.
 
-These are development-environment measurements only. They are not hosted CI evidence and are not measurements of the user's exact PC.
+These are historical development-environment measurements only. They are not acceptance evidence for the current HEAD and are not measurements of the user's exact PC. The current resource-limit regressions must be resolved through exact-head hosted CI.
 
 ## Hosted provisional evidence
 
