@@ -144,6 +144,21 @@ def test_stage1p_style_neutral_document_ids_remain_accepted(tmp_path: Path) -> N
     assert page.source_locator == "PDF!p=1"
 
 
+def test_evidence_repr_does_not_echo_document_text() -> None:
+    secret = "PRIVATE_PROCUREMENT_TEXT_SHOULD_NOT_BE_LOGGED"
+    block = TextBlockEvidence(text=secret)
+    page = DocumentPageEvidence(
+        document_id="DOCUMENT_0006",
+        page_number=1,
+        provider="pypdfium2",
+        provider_config_id="pdfium-native-text-sequential-v1",
+        text_blocks=(block,),
+    )
+
+    assert secret not in repr(block)
+    assert secret not in repr(page)
+
+
 def test_page_contract_rejects_provider_specific_objects_and_unsafe_ids() -> None:
     block = TextBlockEvidence(text="safe")
 
