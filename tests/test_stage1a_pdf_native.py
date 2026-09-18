@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+import inspect
+import subprocess
+import sys
 
 from PIL import Image, ImageDraw
 import pytest
 
+import stroy_snab.experiments.stage1a_pdf as stage1a_pdf
 from stroy_snab.experiments.stage1a_pdf import (
     DocumentPageEvidence,
     PdfNativeTextExtractionError,
@@ -182,6 +186,72 @@ def test_page_contract_rejects_provider_specific_objects_and_unsafe_ids() -> Non
         )
 
 
+def test_pdfium_autoclose_debug_stderr_never_contains_raw_source_path(
+    tmp_path: Path,
+) -> None:
+    private_looking_name = "PRIVATE_SUPPLIER_SECRET_INVOICE_777.pdf"
+    path = tmp_path / private_looking_name
+    write_synthetic_text_pdf(
+        path,
+        pages=[SyntheticPdfPage(lines=("Item | pcs | 1",))],
+    )
+
+    script = """
+import logging
+import sys
+import pypdfium2_cfg
+from stroy_snab.experiments.stage1a_pdf import extract_native_pdf_pages
+
+pypdfium2_cfg.DEBUG_AUTOCLOSE.value = logging.DEBUG
+extract_native_pdf_pages(sys.argv[1], document_id="DOCUMENT_0010")
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", script, str(path)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "Close (explicit)" in completed.stderr
+    assert private_looking_name not in completed.stderr
+    assert str(path) not in completed.stderr
+
+
+def test_production_resource_defaults_are_locked() -> None:
+    parameters = inspect.signature(extract_native_pdf_pages).parameters
+
+    assert parameters["max_source_bytes"].default == 100 * 1024 * 1024
+    assert parameters["max_pages"].default == 50
+    assert parameters["max_page_characters"].default == 1_000_000
+
+
+@pytest.mark.parametrize(
+    ("argument", "value"),
+    [
+        ("max_source_bytes", 100 * 1024 * 1024 + 1),
+        ("max_pages", 51),
+        ("max_page_characters", 1_000_001),
+    ],
+)
+def test_resource_hard_ceiling_cannot_be_raised(
+    tmp_path: Path,
+    argument: str,
+    value: int,
+) -> None:
+    path = tmp_path / "bounded.pdf"
+    write_synthetic_text_pdf(
+        path,
+        pages=[SyntheticPdfPage(lines=("Item | pcs | 1",))],
+    )
+
+    with pytest.raises(ValueError, match=argument):
+        extract_native_pdf_pages(
+            path,
+            document_id="DOCUMENT_0011",
+            **{argument: value},
+        )
+
+
 def test_source_size_limit_fails_closed_without_echoing_path(tmp_path: Path) -> None:
     path = tmp_path / "PRIVATE_OVERSIZE_SUPPLIER.pdf"
     write_synthetic_text_pdf(
@@ -200,15 +270,28 @@ def test_source_size_limit_fails_closed_without_echoing_path(tmp_path: Path) -> 
     assert "PRIVATE_OVERSIZE_SUPPLIER" not in str(exc_info.value)
 
 
-def test_page_limit_fails_closed_before_page_extraction(tmp_path: Path) -> None:
+def test_page_limit_fails_closed_before_page_extraction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     path = tmp_path / "many-pages.pdf"
-    write_synthetic_text_pdf(
-        path,
-        pages=[
-            SyntheticPdfPage(lines=("Page one",)),
-            SyntheticPdfPage(lines=("Page two",)),
-        ],
-    )
+    path.write_bytes(b"%PDF-1.4\n")
+
+    class FakePdf:
+        page_accessed = False
+
+        def __len__(self) -> int:
+            return 2
+
+        def __getitem__(self, index: int):
+            self.page_accessed = True
+            raise AssertionError("page access must not occur before page-limit rejection")
+
+        def close(self) -> None:
+            pass
+
+    fake_pdf = FakePdf()
+    monkeypatch.setattr(stage1a_pdf.pdfium, "PdfDocument", lambda source: fake_pdf)
 
     with pytest.raises(PdfNativeTextExtractionError) as exc_info:
         extract_native_pdf_pages(
@@ -218,16 +301,60 @@ def test_page_limit_fails_closed_before_page_extraction(tmp_path: Path) -> None:
         )
 
     assert str(exc_info.value) == "PDF_PAGE_LIMIT_EXCEEDED"
+    assert fake_pdf.page_accessed is False
 
 
 def test_text_character_limit_fails_closed_before_materializing_text(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     path = tmp_path / "dense-text.pdf"
-    write_synthetic_text_pdf(
-        path,
-        pages=[SyntheticPdfPage(lines=("1234567890",))],
-    )
+    path.write_bytes(b"%PDF-1.4\n")
+
+    class FakeTextPage:
+        count_called = False
+        bounded_called = False
+
+        def count_chars(self) -> int:
+            self.count_called = True
+            return 10
+
+        def get_text_bounded(self, *, errors: str) -> str:
+            self.bounded_called = True
+            raise AssertionError("text must not materialize after character-limit rejection")
+
+        def close(self) -> None:
+            pass
+
+    class FakePage:
+        def __init__(self, text_page: FakeTextPage) -> None:
+            self.text_page = text_page
+
+        def get_rotation(self) -> int:
+            return 0
+
+        def get_textpage(self) -> FakeTextPage:
+            return self.text_page
+
+        def close(self) -> None:
+            pass
+
+    class FakePdf:
+        def __init__(self, page: FakePage) -> None:
+            self.page = page
+
+        def __len__(self) -> int:
+            return 1
+
+        def __getitem__(self, index: int) -> FakePage:
+            return self.page
+
+        def close(self) -> None:
+            pass
+
+    fake_text_page = FakeTextPage()
+    fake_pdf = FakePdf(FakePage(fake_text_page))
+    monkeypatch.setattr(stage1a_pdf.pdfium, "PdfDocument", lambda source: fake_pdf)
 
     with pytest.raises(PdfNativeTextExtractionError) as exc_info:
         extract_native_pdf_pages(
@@ -237,6 +364,8 @@ def test_text_character_limit_fails_closed_before_materializing_text(
         )
 
     assert str(exc_info.value) == "PDF_TEXT_LIMIT_EXCEEDED"
+    assert fake_text_page.count_called is True
+    assert fake_text_page.bounded_called is False
 
 
 def test_provider_identity_records_exact_runtime_versions() -> None:
