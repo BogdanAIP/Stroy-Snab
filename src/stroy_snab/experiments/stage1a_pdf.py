@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import re
 
@@ -24,7 +24,7 @@ _PROVIDER_CONFIG_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 
 @dataclass(frozen=True, slots=True)
 class TextBlockEvidence:
-    text: str
+    text: str = field(repr=False)
     bbox: tuple[float, float, float, float] | None = None
     confidence: float | None = None
     block_kind: str = "text"
@@ -49,8 +49,8 @@ class DocumentPageEvidence:
     page_number: int
     provider: str
     provider_config_id: str
-    text_blocks: tuple[TextBlockEvidence, ...]
-    tables: tuple[tuple[TextBlockEvidence, ...], ...] = ()
+    text_blocks: tuple[TextBlockEvidence, ...] = field(repr=False)
+    tables: tuple[tuple[TextBlockEvidence, ...], ...] = field(default=(), repr=False)
     warnings: tuple[str, ...] = ()
     rotation_degrees: int = 0
 
