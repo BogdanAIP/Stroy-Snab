@@ -215,6 +215,7 @@ extract_native_pdf_pages(sys.argv[1], document_id="DOCUMENT_0010")
     assert "Close (explicit)" in completed.stderr
     assert private_looking_name not in completed.stderr
     assert str(path) not in completed.stderr
+    assert "Item | pcs | 1" not in completed.stderr
 
 
 def test_production_resource_defaults_are_locked() -> None:
