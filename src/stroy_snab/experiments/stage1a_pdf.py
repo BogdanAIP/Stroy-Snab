@@ -18,6 +18,8 @@ _NEUTRAL_DOCUMENT_ID = re.compile(
 )
 _SAFE_WARNING_CODES = frozenset({"NO_NATIVE_TEXT", "ROTATED_PAGE"})
 _ALLOWED_BLOCK_KINDS = frozenset({"text", "table", "cell"})
+_PROVIDER_ID = re.compile(r"^[a-z0-9][a-z0-9._/-]{0,63}$")
+_PROVIDER_CONFIG_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,8 +59,18 @@ class DocumentPageEvidence:
             raise ValueError("document_id must be a reviewed neutral id")
         if self.page_number < 1:
             raise ValueError("page_number must be 1-based")
-        if not self.provider or not self.provider_config_id:
-            raise ValueError("provider identity must be explicit")
+        if not _PROVIDER_ID.fullmatch(self.provider):
+            raise ValueError("provider must be a safe identifier")
+        if not _PROVIDER_CONFIG_ID_PATTERN.fullmatch(self.provider_config_id):
+            raise ValueError("provider_config_id must be a safe identifier")
+        if any(not isinstance(block, TextBlockEvidence) for block in self.text_blocks):
+            raise ValueError("text_blocks must contain provider-neutral TextBlockEvidence")
+        if any(
+            not isinstance(block, TextBlockEvidence)
+            for table in self.tables
+            for block in table
+        ):
+            raise ValueError("tables must contain provider-neutral TextBlockEvidence")
         if self.rotation_degrees not in {0, 90, 180, 270}:
             raise ValueError("rotation_degrees must be a PDF quarter-turn")
         if any(code not in _SAFE_WARNING_CODES for code in self.warnings):
@@ -99,7 +111,10 @@ def _safe_close(resource: object | None) -> None:
         return
     close = getattr(resource, "close", None)
     if close is not None:
-        close()
+        try:
+            close()
+        except Exception:
+            raise PdfNativeTextExtractionError("PDF_RESOURCE_CLOSE_FAILED") from None
 
 
 def extract_native_pdf_pages(
