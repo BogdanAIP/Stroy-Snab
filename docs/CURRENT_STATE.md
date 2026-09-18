@@ -105,6 +105,23 @@ Development-side isolated preflight for the new native-PDF files:
 
 These are development-environment measurements only. They are not hosted CI evidence and are not measurements of the user's exact PC.
 
+## Hosted provisional evidence
+
+Exact implementation HEAD before evidence sync:
+
+`4395128e486dadcc5a5f7a86796c77bda4154b8f`
+
+Hosted workflow run #126 / `35336166786` completed successfully on all required matrix targets:
+
+- Ubuntu / Python 3.11.16: 101 tests PASS; accepted XLSX benchmark/evaluation PASS; native PDF benchmark 3 pages / 153 characters / 2.707 ms / 21.2 MB peak RSS / 0.002 MB temporary tree;
+- Ubuntu / Python 3.13.15: 101 tests PASS; accepted XLSX benchmark/evaluation PASS; native PDF benchmark 3 pages / 153 characters / 3.005 ms / 21.6 MB peak RSS / 0.002 MB temporary tree;
+- Windows / Python 3.13.15: 101 tests PASS; accepted XLSX benchmark/evaluation PASS; native PDF benchmark 3 pages / 153 characters / 3.874 ms / 29.8 MB peak RSS / 0.002 MB temporary tree;
+- hosted runtime identity for the new benchmark: pypdfium2 5.13.0 / PDFium 153.0.7999.0 / sequential;
+- benchmark output reports `content_logged=false` and `paths_logged=false`;
+- model footprint is 0 because this native baseline adds no model runtime.
+
+The accepted Stage 1A public XLSX evaluation remained perfect on its repository fixture in every matrix job. This evidence is provisional because synchronizing it into the canonical state moves HEAD; a new exact-head hosted CI run is required before terminal review.
+
 PR #7 `Stage 1A: establish native PDF text baseline` is open against the accepted BASE `ee065e2bdb4c77c6304df773ecbf47d5303354b5`.
 
 ## Acceptance gate for the active experiment
@@ -121,11 +138,10 @@ Before merge:
 
 ## Immediate next action
 
-1. obtain hosted exact-head CI for PR #7 and record Linux/Windows resource evidence;
-2. verify the accepted XLSX suite and benchmarks remain unchanged;
-3. remediate only concrete findings/regressions, if any;
-4. freeze final HEAD and run independent exact-head review;
-5. merge only on `PASS`;
+1. obtain a final exact-head hosted CI run after evidence synchronization;
+2. verify all three matrices, accepted XLSX checks and the native PDF benchmark remain green;
+3. freeze final HEAD and run independent exact-head review;
+4. merge only on `PASS`;
 6. after acceptance, add procurement-line reconstruction/evaluation against synthetic visual gold before crediting Docling or OCR;
 7. only then compare optional heavy providers against the same baseline/gold;
 8. keep bounded `PRIVATE_VISUAL_CONTROL_0001` aggregate-only and outside GitHub raw-data publication.
