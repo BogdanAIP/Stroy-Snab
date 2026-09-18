@@ -92,15 +92,15 @@ Explicitly out of scope for this bounded PR:
 
 Development-side isolated preflight for the new native-PDF files:
 
-- 7/7 focused tests passed;
+- 8/8 focused tests passed;
 - synthetic benchmark: 1 document / 3 pages / 153 extracted characters;
 - one rotated page was surfaced explicitly;
-- local elapsed time was about 35.8 ms;
+- local elapsed time was about 31.6 ms on the latest preflight run;
 - local whole-process peak RSS was about 94.5 MB;
 - local pypdfium2: 5.8.0;
 - local PDFium: 149.0.7825.0;
+- temporary synthetic tree: about 0.002 MB;
 - model footprint: 0;
-- network access: 0;
 - benchmark output contains aggregate metadata only and declares `content_logged=false`, `paths_logged=false`.
 
 These are development-environment measurements only. They are not hosted CI evidence and are not measurements of the user's exact PC.
