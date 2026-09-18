@@ -6,7 +6,9 @@ from PIL import Image, ImageDraw
 import pytest
 
 from stroy_snab.experiments.stage1a_pdf import (
+    DocumentPageEvidence,
     PdfNativeTextExtractionError,
+    TextBlockEvidence,
     extract_native_pdf_pages,
     native_pdf_provider_identity,
 )
@@ -140,6 +142,29 @@ def test_stage1p_style_neutral_document_ids_remain_accepted(tmp_path: Path) -> N
 
     assert page.document_id == "INVOICE_0001"
     assert page.source_locator == "PDF!p=1"
+
+
+def test_page_contract_rejects_provider_specific_objects_and_unsafe_ids() -> None:
+    block = TextBlockEvidence(text="safe")
+
+    with pytest.raises(ValueError, match="provider must be a safe identifier"):
+        DocumentPageEvidence(
+            document_id="DOCUMENT_0006",
+            page_number=1,
+            provider="private supplier path",
+            provider_config_id="safe-config",
+            text_blocks=(block,),
+        )
+
+    with pytest.raises(ValueError, match="provider-neutral"):
+        DocumentPageEvidence(
+            document_id="DOCUMENT_0006",
+            page_number=1,
+            provider="pypdfium2",
+            provider_config_id="safe-config",
+            text_blocks=(block,),
+            tables=((object(),),),  # type: ignore[arg-type]
+        )
 
 
 def test_provider_identity_records_exact_runtime_versions() -> None:
