@@ -182,6 +182,63 @@ def test_page_contract_rejects_provider_specific_objects_and_unsafe_ids() -> Non
         )
 
 
+def test_source_size_limit_fails_closed_without_echoing_path(tmp_path: Path) -> None:
+    path = tmp_path / "PRIVATE_OVERSIZE_SUPPLIER.pdf"
+    write_synthetic_text_pdf(
+        path,
+        pages=[SyntheticPdfPage(lines=("Item | pcs | 1",))],
+    )
+
+    with pytest.raises(PdfNativeTextExtractionError) as exc_info:
+        extract_native_pdf_pages(
+            path,
+            document_id="DOCUMENT_0007",
+            max_source_bytes=1,
+        )
+
+    assert str(exc_info.value) == "PDF_SOURCE_LIMIT_EXCEEDED"
+    assert "PRIVATE_OVERSIZE_SUPPLIER" not in str(exc_info.value)
+
+
+def test_page_limit_fails_closed_before_page_extraction(tmp_path: Path) -> None:
+    path = tmp_path / "many-pages.pdf"
+    write_synthetic_text_pdf(
+        path,
+        pages=[
+            SyntheticPdfPage(lines=("Page one",)),
+            SyntheticPdfPage(lines=("Page two",)),
+        ],
+    )
+
+    with pytest.raises(PdfNativeTextExtractionError) as exc_info:
+        extract_native_pdf_pages(
+            path,
+            document_id="DOCUMENT_0008",
+            max_pages=1,
+        )
+
+    assert str(exc_info.value) == "PDF_PAGE_LIMIT_EXCEEDED"
+
+
+def test_text_character_limit_fails_closed_before_materializing_text(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "dense-text.pdf"
+    write_synthetic_text_pdf(
+        path,
+        pages=[SyntheticPdfPage(lines=("1234567890",))],
+    )
+
+    with pytest.raises(PdfNativeTextExtractionError) as exc_info:
+        extract_native_pdf_pages(
+            path,
+            document_id="DOCUMENT_0009",
+            max_page_characters=5,
+        )
+
+    assert str(exc_info.value) == "PDF_TEXT_LIMIT_EXCEEDED"
+
+
 def test_provider_identity_records_exact_runtime_versions() -> None:
     identity = native_pdf_provider_identity()
 
