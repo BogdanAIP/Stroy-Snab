@@ -18,9 +18,9 @@ _NEUTRAL_DOCUMENT_ID = re.compile(
 )
 _SAFE_WARNING_CODES = frozenset({"NO_NATIVE_TEXT", "ROTATED_PAGE"})
 _ALLOWED_BLOCK_KINDS = frozenset({"text", "table", "cell"})
-_DEFAULT_MAX_SOURCE_BYTES = 100 * 1024 * 1024
-_DEFAULT_MAX_PAGES = 50
-_DEFAULT_MAX_PAGE_CHARACTERS = 1_000_000
+_MAX_SOURCE_BYTES = 100 * 1024 * 1024
+_MAX_PAGES = 50
+_MAX_PAGE_CHARACTERS = 1_000_000
 _PROVIDER_ID = re.compile(r"^[a-z0-9][a-z0-9._/-]{0,63}$")
 _PROVIDER_CONFIG_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 
@@ -124,9 +124,9 @@ def extract_native_pdf_pages(
     path: str | Path,
     *,
     document_id: str,
-    max_source_bytes: int = _DEFAULT_MAX_SOURCE_BYTES,
-    max_pages: int = _DEFAULT_MAX_PAGES,
-    max_page_characters: int = _DEFAULT_MAX_PAGE_CHARACTERS,
+    max_source_bytes: int = _MAX_SOURCE_BYTES,
+    max_pages: int = _MAX_PAGES,
+    max_page_characters: int = _MAX_PAGE_CHARACTERS,
 ) -> tuple[DocumentPageEvidence, ...]:
     """Extract provider-neutral page evidence from a digital PDF text layer.
 
@@ -137,12 +137,22 @@ def extract_native_pdf_pages(
 
     if not _NEUTRAL_DOCUMENT_ID.fullmatch(document_id):
         raise ValueError("document_id must be a reviewed neutral id")
-    if max_source_bytes < 1 or max_pages < 1 or max_page_characters < 1:
-        raise ValueError("resource limits must be positive")
+    limits = (
+        ("max_source_bytes", max_source_bytes, _MAX_SOURCE_BYTES),
+        ("max_pages", max_pages, _MAX_PAGES),
+        ("max_page_characters", max_page_characters, _MAX_PAGE_CHARACTERS),
+    )
+    for name, value, ceiling in limits:
+        if value < 1 or value > ceiling:
+            raise ValueError(f"{name} must be between 1 and {ceiling}")
 
     source = Path(path)
     try:
         if source.stat().st_size > max_source_bytes:
+            raise PdfNativeTextExtractionError("PDF_SOURCE_LIMIT_EXCEEDED")
+        with source.open("rb") as handle:
+            source_bytes = handle.read(max_source_bytes + 1)
+        if len(source_bytes) > max_source_bytes:
             raise PdfNativeTextExtractionError("PDF_SOURCE_LIMIT_EXCEEDED")
     except PdfNativeTextExtractionError:
         raise
@@ -150,7 +160,9 @@ def extract_native_pdf_pages(
         raise PdfNativeTextExtractionError("PDF_OPEN_FAILED") from None
 
     try:
-        pdf = pdfium.PdfDocument(source)
+        # Bytes are deliberate: pypdfium2 PdfDocument repr for byte input is
+        # path-neutral, so DEBUG_AUTOCLOSE cannot echo the raw source pathname.
+        pdf = pdfium.PdfDocument(source_bytes)
     except Exception:
         raise PdfNativeTextExtractionError("PDF_OPEN_FAILED") from None
 
