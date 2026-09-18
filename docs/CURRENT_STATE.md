@@ -1,34 +1,23 @@
 # Current State
 
-Дата состояния: 2026-09-17.
+Дата состояния: 2026-09-18.
 
-## Live repository state at research start
+## Live repository state at native-PDF baseline start
 
 - default branch: `main`;
-- accepted `main` HEAD: `98fa5258a66e141e3b643a736e0f14dc85982feb`;
+- accepted `main` HEAD: `ee065e2bdb4c77c6304df773ecbf47d5303354b5`;
 - Stage 0 accepted via PR #1;
 - Stage 1P anonymization accepted via PR #2;
-- Stage 1A native XLSX baseline accepted via PR #3;
-- Stage 1A XLSX evaluation harness accepted via PR #4;
-- Stage 1A unlabeled-adjacent-unit remediation accepted via PR #5;
-- active branch: `stage1a/pdf-image-extraction-research`;
+- Stage 1A native XLSX baseline/evaluation/remediation accepted via PRs #3-#5;
+- Stage 1A PDF/image research gate accepted via PR #6;
+- active branch: `stage1a/pdf-native-text-baseline`;
 - current roadmap stage: **Stage 1A — Document extraction/evaluation**.
 
-Live GitHub state remains authoritative for current PR HEAD, CI and review status.
+Live GitHub state remains authoritative for the current branch/PR HEAD, CI and review status.
 
 ## Accepted XLSX Stage 1A state
 
-PR #5 merged as:
-
-`98fa5258a66e141e3b643a736e0f14dc85982feb`
-
-Final reviewed PR #5 head:
-
-`857b0bd2946fb20d78daffb317a991fa7419f64b`
-
-Exact-head hosted workflow #114 passed Ubuntu Python 3.11/3.13 and Windows Python 3.13 with 91 tests per matrix. Final independent exact-head semantic review returned `PASS` with zero surviving findings.
-
-Accepted private XLSX control `PRIVATE_CONTROL_0001`:
+Accepted private XLSX control `PRIVATE_CONTROL_0001` remains:
 
 - documents: 4;
 - gold lines: 28;
@@ -44,77 +33,106 @@ Accepted private XLSX control `PRIVATE_CONTROL_0001`:
 
 Raw private filenames, paths, worksheet titles, item values and reverse mappings remain outside GitHub.
 
-## Active Stage 1A PDF/image research
+## Accepted PDF/image research authority
 
 Research brief:
 
 `docs/research/STAGE1A_PDF_IMAGE_EXTRACTION_RESEARCH.md`
 
-Terminal research decision:
+Terminal decision:
 
 **NARROW**
 
-Problem boundary:
+PR #6 was merged into `main` as:
 
-- Stage 1A still lacks accepted PDF/JPG extraction;
-- the mandatory normal-user runtime remains Windows 11 x64 / 16 GB RAM / CPU-first / no mandatory NVIDIA/CUDA;
-- public repository currently has no accepted anonymized-real visual extraction fixture;
-- Stage 1P intentionally kept real visual derivatives private-only until measured need and manual visual review.
+`ee065e2bdb4c77c6304df773ecbf47d5303354b5`
 
-Authorized experiment direction:
+Final reviewed PR #6 head:
 
-1. `pypdfium2` native text extraction is the mandatory low-cost baseline for digital PDFs;
-2. Docling 2.128.x may be tested as an optional layout/table comparator, initially without mandatory OCR on digital PDFs;
-3. PaddleOCR 3.7.x / PP-StructureV3 may be tested as an optional OCR/layout comparator for image-only PDF/JPG, using PP-OCRv5 Russian/East-Slavic/Cyrillic recognition rather than assuming PP-OCRv6 supports Russian;
-4. OCRmyPDF 17.12.x + Tesseract 5.5.x is deferred as the primary path because of Windows native dependency friction and lack of table structure by itself;
-5. all heavy providers must remain behind a provider-neutral experiment adapter and may not become mandatory dependencies without measured evidence and a later promotion decision.
+`b49ce3bc79355e37f00bf0151e979f6ac443df7b`
 
-Proposed private visual control id:
+The exact-head hosted workflow #118 / `35237203755` passed. A fresh independent exact-head semantic review under BASE `code-review` v1.0 returned `PASS` with zero surviving findings.
 
-`PRIVATE_VISUAL_CONTROL_0001`
+The accepted research decision authorizes a provider-neutral visual-extraction experiment, requires the native pypdfium2 digital-PDF baseline first, and keeps Docling/PaddleOCR/OCRmyPDF/Tesseract/VLM paths optional or deferred until measured evidence supports promotion.
 
-Private visual evidence may publish only aggregate metrics and opaque ids. Raw PDFs/images, filenames, company identities, document numbers, page text and reverse mappings remain outside GitHub.
+## Active bounded experiment — native digital PDF baseline
 
-## PR #6 independent review #1 — FAIL and remediation
+Objective:
 
-Fresh independent read-only review of exact head:
+- implement experiment-only provider-neutral `DocumentPageEvidence`;
+- extract native digital-PDF text with the already accepted pypdfium2/PDFium dependency;
+- keep PDFium calls sequential in the first experiment;
+- preserve page-level provenance without raw source filenames;
+- expose only reviewed safe warning codes;
+- record exact pypdfium2/PDFium runtime identity;
+- reproduce Unicode/Cyrillic text-layer, multi-page, rotated-page and image-only failure classes with synthetic data;
+- measure runtime and peak RSS in hosted CI without logging procurement contents or paths.
 
-`1059a3938b2ba52f55f9c8320f2dbb31127e1144`
+Current implementation branch adds:
 
-returned `FAIL` with one P2 research-gate finding:
+- `src/stroy_snab/experiments/stage1a_pdf.py`;
+- `src/stroy_snab/experiments/stage1a_pdf_synthetic.py`;
+- `tests/test_stage1a_pdf_native.py`;
+- `scripts/benchmark_stage1a_pdf.py`;
+- the PDF benchmark as an additional existing CI matrix step.
 
-- the brief documented capabilities, releases, licenses and generic expected failure classes, but BASE `stage-research` v1.0 also requires candidate-specific tests/benchmarks plus issue/failure evidence and an explicit `Failure lessons` section;
-- without that evidence dimension, the `NARROW` decision could not yet serve as complete authority for the next external-component experiment.
+The native baseline deliberately does **not** perform OCR or claim procurement-line accuracy yet. Image-only PDFs are expected to surface `NO_NATIVE_TEXT`, which is baseline failure evidence rather than a hidden fallback.
 
-Remediation in the current branch:
+Explicitly out of scope for this bounded PR:
 
-- the brief now contains `Failure lessons / upstream tests, benchmarks and issue evidence`;
-- pypdfium2 lessons cover existing Stage 1P cross-platform evidence, PDFium thread incompatibility, rotated geometry and native text-extraction failures;
-- Docling lessons record upstream benchmark context plus concrete table-loss, row-mis-pairing, column-order, serializer-loss and hybrid native/OCR failure cases;
-- PaddleOCR lessons record official component CPU/model benchmarks, PP-OCRv5 Russian/East-Slavic/Cyrillic recognition benchmarks, structured-output text-loss, unwarping, offline-model and engine failure evidence;
-- OCRmyPDF/Tesseract lessons record concrete Windows external-dependency and OCR text-layer alignment failures;
-- each lesson now changes the bounded experiment configuration or falsification plan: sequential native PDFium calls; pinned serial/no-OCR Docling digital configuration; structured rather than Markdown-only scoring; standard-engine/local-model/network-disabled Paddle execution with first-run unwarping disabled; and OCRmyPDF/Tesseract remaining deferred until a separate need is measured;
-- one pypdfium2 issue marked upstream as `spam / ai` was explicitly excluded from research evidence rather than used to inflate the case.
+- Docling implementation;
+- PaddleOCR/PP-StructureV3 implementation;
+- OCRmyPDF/Tesseract adoption;
+- VLM/cloud OCR;
+- raw private visual fixtures in GitHub;
+- supplier discovery, matching, lifecycle linkage or later-stage work;
+- promotion of any heavy provider.
 
-Because remediation moved HEAD, the prior terminal review is stale for acceptance and a fresh exact-head independent review is required after hosted CI.
+## Local preflight evidence
+
+Development-side isolated preflight for the new native-PDF files:
+
+- 7/7 focused tests passed;
+- synthetic benchmark: 1 document / 3 pages / 153 extracted characters;
+- one rotated page was surfaced explicitly;
+- local elapsed time was about 35.8 ms;
+- local whole-process peak RSS was about 94.5 MB;
+- local pypdfium2: 5.8.0;
+- local PDFium: 149.0.7825.0;
+- model footprint: 0;
+- network access: 0;
+- benchmark output contains aggregate metadata only and declares `content_logged=false`, `paths_logged=false`.
+
+These are development-environment measurements only. They are not hosted CI evidence and are not measurements of the user's exact PC.
+
+## Acceptance gate for the active experiment
+
+Before merge:
+
+1. exact branch/PR BASE and HEAD are frozen;
+2. hosted Linux Python 3.11/3.13 and Windows Python 3.13 CI pass;
+3. the full accepted XLSX suite/benchmarks remain green;
+4. the native PDF synthetic benchmark runs on every CI matrix target;
+5. benchmark output remains aggregate-only and exposes no source paths/content;
+6. no heavy OCR/layout dependency is introduced;
+7. a fresh independent read-only exact-head semantic review returns `PASS` with zero surviving findings.
 
 ## Immediate next action
 
-1. obtain exact-head hosted CI after the research remediation;
-2. freeze the resulting PR #6 HEAD and run a fresh independent exact-head semantic review;
-3. merge PR #6 only on `PASS` with zero surviving findings;
-4. only after research-gate acceptance, implement experiment-only provider-neutral `DocumentPageEvidence` boundary;
-5. establish pypdfium2 digital-PDF text baseline first;
-6. create synthetic digital-PDF, image-only PDF and image regressions without private content;
-7. compare Docling and PaddleOCR only against the same gold and baseline;
-8. measure E1A quality plus runtime/RAM/temp-disk/model footprint;
-9. run bounded `PRIVATE_VISUAL_CONTROL_0001` with aggregate-only evidence.
+1. open the bounded native-PDF baseline PR;
+2. obtain hosted exact-head CI and record Linux/Windows resource evidence;
+3. remediate only concrete findings/regressions, if any;
+4. freeze final HEAD and run independent exact-head review;
+5. merge only on `PASS`;
+6. after acceptance, add procurement-line reconstruction/evaluation against synthetic visual gold before crediting Docling or OCR;
+7. only then compare optional heavy providers against the same baseline/gold;
+8. keep bounded `PRIVATE_VISUAL_CONTROL_0001` aggregate-only and outside GitHub raw-data publication.
 
 ## Stage 1A still open
 
 Still required before Stage 1A completion:
 
-- accepted PDF/JPG extraction benchmark;
+- accepted PDF/JPG procurement-line extraction benchmark;
 - human gold for visual extraction accuracy;
 - line detection precision/recall and field accuracies across visual formats;
 - document-perfect rate across visual formats;
@@ -124,4 +142,4 @@ Still required before Stage 1A completion:
 - bounded resource evidence for any provider proposed as mandatory;
 - selected minimal PDF/image extraction stack.
 
-Stage 1B lifecycle linkage, Stage 2 normalization, Stage 3 matching and Stage 4 supplier discovery remain downstream and are not promoted by this research.
+Stage 1B lifecycle linkage, Stage 2 normalization, Stage 3 matching and Stage 4 supplier discovery remain downstream.
