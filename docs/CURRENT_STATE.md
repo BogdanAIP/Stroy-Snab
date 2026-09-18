@@ -125,6 +125,26 @@ The accepted Stage 1A public XLSX evaluation remained perfect on its repository 
 
 PR #7 `Stage 1A: establish native PDF text baseline` is open against the accepted BASE `ee065e2bdb4c77c6304df773ecbf47d5303354b5`.
 
+## PR #7 independent review #1 — FAIL and remediation
+
+Fresh independent review of exact head `44139e34149f44b4eb994ed65c0fb4e0d7aa97db` returned `FAIL` with three P2 findings:
+
+1. pypdfium2 `PdfDocument(Path)` could expose the resolved raw source path through its autoclose debug representation on stderr;
+2. the 100 MB / 50-page / 1,000,000-character values were defaults rather than non-bypassable ceilings because callers could pass larger overrides;
+3. resource regressions asserted final error codes but did not prove fail-before-page-access / fail-before-text-materialization ordering or lock the production defaults.
+
+Current remediation:
+
+- provider input is now bounded PDF bytes rather than the raw `Path`; pypdfium2 therefore never retains the private pathname;
+- a subprocess regression enables pypdfium2 autoclose debugging and verifies stderr contains neither the raw path/filename nor document text;
+- accepted resource ceilings are now hard maxima: overrides may lower limits for bounded tests, but values above 100 MB / 50 pages / 1,000,000 characters are rejected;
+- tests lock the exact production defaults and explicitly reject attempts to raise each hard ceiling;
+- provider-instrumented page-limit regression proves page access is not invoked before rejection;
+- provider-instrumented character-limit regression proves `get_text_bounded()` is not invoked after `count_chars()` exceeds the limit;
+- source reads are themselves bounded to `max_source_bytes + 1`, protecting against a file growing after the initial size check.
+
+Because remediation moved HEAD, all earlier exact-head CI and review results are stale for terminal acceptance. A fresh exact-head hosted CI run and a fresh independent semantic review are required.
+
 ## Acceptance gate for the active experiment
 
 Before merge:
