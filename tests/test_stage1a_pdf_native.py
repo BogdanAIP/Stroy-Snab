@@ -129,6 +129,19 @@ def test_raw_looking_document_id_is_rejected_before_extraction(tmp_path: Path) -
         extract_native_pdf_pages(path, document_id="Supplier Alpha invoice 123.pdf")
 
 
+def test_stage1p_style_neutral_document_ids_remain_accepted(tmp_path: Path) -> None:
+    path = tmp_path / "invoice.pdf"
+    write_synthetic_text_pdf(
+        path,
+        pages=[SyntheticPdfPage(lines=("Item | pcs | 1",))],
+    )
+
+    page = extract_native_pdf_pages(path, document_id="INVOICE_0001")[0]
+
+    assert page.document_id == "INVOICE_0001"
+    assert page.source_locator == "PDF!p=1"
+
+
 def test_provider_identity_records_exact_runtime_versions() -> None:
     identity = native_pdf_provider_identity()
 
