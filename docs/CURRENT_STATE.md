@@ -136,15 +136,19 @@ Before merge:
 6. no heavy OCR/layout dependency is introduced;
 7. a fresh independent read-only exact-head semantic review returns `PASS` with zero surviving findings.
 
-## Immediate next action
+## Terminal acceptance procedure
 
-1. obtain a final exact-head hosted CI run after evidence synchronization;
-2. verify all three matrices, accepted XLSX checks and the native PDF benchmark remain green;
-3. freeze final HEAD and run independent exact-head review;
-4. merge only on `PASS`;
-6. after acceptance, add procurement-line reconstruction/evaluation against synthetic visual gold before crediting Docling or OCR;
-7. only then compare optional heavy providers against the same baseline/gold;
-8. keep bounded `PRIVATE_VISUAL_CONTROL_0001` aggregate-only and outside GitHub raw-data publication.
+Exact-head acceptance state is intentionally resolved live from GitHub rather than hardcoded as a time-sensitive "current HEAD passed" claim in this file. Writing such a claim would itself move HEAD and invalidate the evidence it describes.
+
+For terminal acceptance:
+
+1. resolve the live PR #7 BASE/HEAD and exact-head hosted CI;
+2. require all three matrices, accepted XLSX checks and the native PDF benchmark to be green on that exact HEAD;
+3. freeze the candidate and run a fresh independent exact-head semantic review;
+4. merge only on `PASS` with zero surviving findings;
+5. after acceptance, add procurement-line reconstruction/evaluation against synthetic visual gold before crediting Docling or OCR;
+6. only then compare optional heavy providers against the same baseline/gold;
+7. keep bounded `PRIVATE_VISUAL_CONTROL_0001` aggregate-only and outside GitHub raw-data publication.
 
 ## Stage 1A still open
 
