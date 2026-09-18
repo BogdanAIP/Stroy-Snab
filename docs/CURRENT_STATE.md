@@ -92,11 +92,11 @@ Explicitly out of scope for this bounded PR:
 
 Development-side isolated preflight for the new native-PDF files:
 
-- 9/9 focused tests passed;
+- 10/10 focused tests passed;
 - synthetic benchmark: 1 document / 3 pages / 153 extracted characters;
 - one rotated page was surfaced explicitly;
-- local elapsed time was about 31.8 ms on the latest preflight run;
-- local whole-process peak RSS was about 94.5 MB;
+- local elapsed time was about 34.5 ms on the latest preflight run;
+- local whole-process peak RSS was about 94.7 MB;
 - local pypdfium2: 5.8.0;
 - local PDFium: 149.0.7825.0;
 - temporary synthetic tree: about 0.002 MB;
