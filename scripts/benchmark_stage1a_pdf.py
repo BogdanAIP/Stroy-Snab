@@ -60,6 +60,10 @@ def _peak_rss_bytes() -> int:
     return int(usage * 1024)
 
 
+def _tree_bytes(root: Path) -> int:
+    return sum(path.stat().st_size for path in root.rglob("*") if path.is_file())
+
+
 def run() -> dict[str, object]:
     identity = native_pdf_provider_identity()
     with tempfile.TemporaryDirectory(prefix="stroy-snab-stage1a-pdf-") as temp:
@@ -97,6 +101,7 @@ def run() -> dict[str, object]:
         )
         rotated_pages = sum(bool(page.rotation_degrees) for page in pages)
         empty_native_text_pages = sum(not page.text_blocks for page in pages)
+        temporary_tree_mb = round(_tree_bytes(root) / (1024 * 1024), 3)
 
     return {
         "schema_version": "1.0",
@@ -116,9 +121,9 @@ def run() -> dict[str, object]:
         "empty_native_text_pages": empty_native_text_pages,
         "elapsed_ms": round(elapsed_ms, 3),
         "peak_rss_mb": round(_peak_rss_bytes() / (1024 * 1024), 1),
+        "temporary_tree_mb": temporary_tree_mb,
         "content_logged": False,
         "paths_logged": False,
-        "network_access_count": 0,
         "model_footprint_mb": 0.0,
     }
 
